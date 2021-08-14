@@ -43,7 +43,7 @@ const msconfig = {
          ] as WorkerLogTag[],
       },
       router: {
-         mediaCodes: [
+         mediaCodecs: [
             {
                kind: "audio",
                mimeType: "audio/opus",
