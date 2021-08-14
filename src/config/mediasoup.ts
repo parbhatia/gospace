@@ -1,38 +1,38 @@
 import { RtpCodecCapability } from "mediasoup/lib/RtpParameters"
 import { TransportListenIp } from "mediasoup/lib/Transport"
-import { WorkerLogTag } from "mediasoup/lib/Worker"
+import { WorkerLogLevel, WorkerLogTag } from "mediasoup/lib/Worker"
 import { cpus, networkInterfaces } from "os"
+import { serverPort, serverListenIp } from "./index"
 
-//refactored from github/miroslavpejic85
 const getAnnouncedIp = () => {
    let defaultIp = "127.0.0.1"
    const allInterfaces = networkInterfaces()
    if (allInterfaces !== undefined) {
-      Object.keys(allInterfaces).forEach((interfaceName) => {
+      for (const interfaceName of Object.keys(allInterfaces)) {
          for (const interFace of allInterfaces[interfaceName]!) {
-            // Ignore IPv6 and 127.0.0.1
+            // Skip over non-IPv4 and internal (i.e. 127.0.0.1) addresses
             if (interFace.family !== "IPv4" || interFace.internal !== false) {
                continue
             }
-            // Set the local ip to the first IPv4 address found and exit the loop
+            // exit loop when first IPv4 address found
             defaultIp = interFace.address
-            return
+            break
          }
-      })
+      }
    }
    return defaultIp
 }
 
 const msconfig = {
-   listenIp: "0.0.0.0",
-   listenPort: 3016,
+   listenIp: serverListenIp,
+   listenPort: serverPort,
    mediasoup: {
       //each mediasoup worker takes 1 cpu
       numWorkers: Object.keys(cpus()).length,
       worker: {
          rtcMinPort: 10000,
          rtcMaxPort: 10100,
-         logLevel: "debug",
+         logLevel: "debug" as WorkerLogLevel,
          logTags: [
             "info",
             "ice",
