@@ -1,37 +1,6 @@
 import * as mediasoup from "mediasoup"
-import { Worker, Router } from "mediasoup/lib/types"
+import { Worker } from "mediasoup/lib/types"
 import config from "./config/mediasoup"
-import { RtpCodecCapability } from "mediasoup/lib/RtpParameters"
-
-// A mediasoup Router can be thought of as a Room. It belongs to a single worker
-class Room {
-   worker: Worker
-   mediaCodecs: RtpCodecCapability[]
-   router: Router | null
-   constructor({
-      worker,
-      mediaCodecs = config.mediasoup.router.mediaCodecs,
-   }: {
-      worker: Worker
-      mediaCodecs?: RtpCodecCapability[]
-   }) {
-      this.worker = worker
-      this.mediaCodecs = mediaCodecs
-      this.router = null
-   }
-   init = async () => {
-      await this.createRouterFromWorker()
-   }
-   createRouterFromWorker = async () => {
-      const router: Router = await this.worker.createRouter({
-         mediaCodecs: this.mediaCodecs,
-      })
-      this.router = router
-   }
-   getRTPCapabilities = () => {
-      return this.router?.rtpCapabilities
-   }
-}
 
 // A single Worker contains multiple Routers
 class WorkerFactory {
@@ -70,4 +39,4 @@ class WorkerFactory {
    getAllWorkers = (): Array<Worker> => this.workers
 }
 
-export { WorkerFactory, Room }
+export default WorkerFactory

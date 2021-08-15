@@ -9,18 +9,23 @@ export default function Home() {
    const socketRef: any = useRef()
    const [deviceConnected, setDeviceConnected] = useState(false)
    const [socketConnected, setSocketConnected] = useState(false)
+   const [roomId, setRoomId] = useState("")
 
    // Request RouterRTPCapabilities from mediasoup Router, so we can create and endpoint (Device)
    const requestRouterRTPCapabilities = (socket: Socket) => {
-      socket.emit("requestRouterRTPCapabilities")
+      socket.emit("requestRouterRTPCapabilities", roomId)
    }
 
-   const requestCreateProducerTransport = (socket: Socket, device: Device) => {
-      socket.emit("requestCreateProducerTransport", {
-         type: "createProducerTransport",
-         forceTcp: false,
-         rtpCapabilities: device.rtpCapabilities,
-      })
+   const requestCreateProducerTransport = async (
+      socket: Socket,
+      device: Device,
+   ) => {
+      // socket.emit("requestCreateProducerTransport", {
+      //    roomId,
+      //    type: "createProducerTransport",
+      //    forceTcp: false,
+      //    rtpCapabilities: device.rtpCapabilities,
+      // })
    }
 
    //Create device and initialize it.
@@ -35,6 +40,10 @@ export default function Home() {
       } catch (e) {
          console.log("Error loading device", e)
       } finally {
+         //  console.log(
+         //     "finalyl block",
+         //     console.log(device.rtpCapabilities),
+         //  )
          return device
       }
    }
@@ -61,6 +70,7 @@ export default function Home() {
          })
          socket.on("RTPCapabilitiesPayload", async (msg: any) => {
             const routerRtpCapabilities = msg
+            console.log(routerRtpCapabilities)
             const device = await loadDevice(routerRtpCapabilities)
             await requestCreateProducerTransport(socket, device)
          })
