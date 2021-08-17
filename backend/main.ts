@@ -1,98 +1,47 @@
 import express from "express"
 import { createServer } from "http"
-import { Router } from "mediasoup/src/Router"
+import { Router, RtpCapabilities, RtpParameters } from "mediasoup/lib/types"
 import { Server, Socket } from "socket.io"
 import { serverPort } from "./config/index"
+import Room, { allRooms, createNewRoom, roomExists } from "./Room"
+import Peer from "./Peer"
 import WorkerFactory from "./WorkerFactory"
-import Room from "./Room"
-import mediasoupConfig from "./config/mediasoup"
-// import { Transport } from "mediasoup/src/Transport"
-import {
-   DtlsParameters,
-   IceCandidate,
-   IceParameters,
-   WebRtcTransport,
-} from "mediasoup/src/WebRtcTransport"
-import { RtpCapabilities } from "mediasoup/src/RtpParameters"
+import { DtlsParameters } from "mediasoup/src/WebRtcTransport"
+import { UserMeta } from "./types"
+import { MediaKind } from "mediasoup/lib/RtpParameters"
 
-//WebRtcTransport created using a Router
-class Transport {
-   transport: WebRtcTransport | null
-   router: Router
-   transportParams: {
-      id: String
-      iceParameters: IceParameters
-      iceCandidates: Array<IceCandidate>
-      dtlsParameters: DtlsParameters
-   } | null
-   constructor({ router }: { router: Router }) {
-      this.router = router
-      this.transport = null
-      this.transportParams = null
-   }
-   init = async () => {
-      const { listenIps, maxIncomingBitrate, initialAvailableOutgoingBitrate } =
-         mediasoupConfig.mediasoup.webRtcTransport
-      const transport: WebRtcTransport =
-         await this.router.createWebRtcTransport({
-            listenIps,
-            initialAvailableOutgoingBitrate,
-            enableUdp: true,
-            enableTcp: true,
-            preferUdp: true,
-         })
-      await transport.setMaxIncomingBitrate(maxIncomingBitrate)
-      this.transport = transport
-      this.transportParams = {
-         id: this.transport.id,
-         iceParameters: this.transport.iceParameters,
-         iceCandidates: this.transport.iceCandidates,
-         dtlsParameters: this.transport.dtlsParameters,
-      }
-   }
-   getTransport = () => this.transport
-   getTransportParams = () => this.transportParams
-}
-
-const allRooms: Map<string, Room> = new Map()
-
-const roomExists = (roomId: string): boolean => {
-   return allRooms.has(roomId)
-}
-
-const createNewRoom = async (workerFactory: WorkerFactory): Promise<Room> => {
-   const newRoom = new Room({
-      worker: workerFactory.getAvailableWorker(),
-   })
-   await newRoom.init()
-   allRooms.set(newRoom.id, newRoom)
-   return newRoom
-}
+let io: Server
+export { io }
 
 const main = async () => {
    const app = express()
    const server = createServer(app)
-   const io = new Server(server, {
+   io = new Server(server, {
       path: "/server/",
    })
    const port: number = serverPort
 
-   const workerFactory = await new WorkerFactory()
-   await workerFactory.init()
+   const workerFactory = await WorkerFactory.init()
 
    io.on("connection", async (socket: Socket) => {
       console.log("Socket connected! :D")
 
       socket.on("requestRouterRTPCapabilities", async (msg) => {
-         const roomId: string = msg
+         //Create a room on this request
+
          console.log("Client requests Router's RTP capabilities")
+         const { roomId, userMeta }: { roomId: string; userMeta: string } = msg
          let room: Room
          if (!roomExists(roomId)) {
             room = await createNewRoom(workerFactory)
          } else {
             room = allRooms.get(roomId)!
          }
-         const routerRTPCapabilities: RtpCapabilities | undefined =
+
+         //Join socket to new room
+         socket.join(roomId)
+
+         const routerRTPCapabilities: RtpCapabilities =
             room.getRTPCapabilities()
          if (!routerRTPCapabilities) {
             throw new Error("Error requesting Router's RTP Capabilities")
@@ -100,14 +49,88 @@ const main = async () => {
          socket.emit("RTPCapabilitiesPayload", routerRTPCapabilities)
       })
 
-      socket.on("requestCreateProducerTransport", async (msg) => {
+      socket.on("requestCreateWebRtcTransport", async (msg) => {
          console.log("Client requests Create Producer Transport")
-         const roomId: string = msg
+         const { roomId, userMeta }: { userMeta: UserMeta; roomId: string } =
+            msg
          if (allRooms.has(roomId)) {
-            const router: Router = allRooms.get(roomId)?.getRouter()!
-            const webRtcTransport = new Transport({ router })
+            const room = allRooms.get(roomId)!
+            const newPeer = await room.createPeer({ userMeta })
+            //send created WebRtc transport's params to client, so client can use the params to create a Transport for communication
+            socket.emit(
+               "receiveWebRtcTransportParams",
+               newPeer.getTransportParams(),
+            )
          } else {
-            throw new Error("Invalid create producer transport request")
+            throw new Error(
+               "requestCreateWebRtcTransport failed. Room does not exist",
+            )
+         }
+      })
+
+      socket.on("connectTransport", async (msg, callback) => {
+         console.log("CONNECTING TRANSPORT IN SERVER")
+         const {
+            userMeta,
+            roomId,
+            transportId,
+            dtlsParameters,
+         }: {
+            userMeta: UserMeta
+            roomId: string
+            transportId: string
+            dtlsParameters: DtlsParameters
+         } = msg
+         if (allRooms.has(roomId)) {
+            allRooms
+               .get(roomId)!
+               .getPeer(userMeta)
+               .connectTransport({ id: transportId, dtlsParameters })
+            callback({ Status: "success" })
+         } else {
+            callback({ Status: "failure" })
+         }
+      })
+      // socket.on("broadcast", async (msg) => {
+      //    const {
+      //       userMeta,
+      //       roomId,
+      //    }: {
+      //       userMeta: UserMeta
+      //       roomId: string
+      //    } = msg
+      //    if (allRooms.has(roomId)) {
+      //       await allRooms
+      //          .get(roomId)!
+      //          .getPeer(userMeta)
+      //          .setProducerTransport({ id: transportId, rtpParameters, kind })
+      //    } else {
+      //       throw new Error("addProducerTransport error")
+      //    }
+      // })
+      socket.on("addProducerTransport", async (msg) => {
+         const {
+            userMeta,
+            roomId,
+            transportId,
+            rtpParameters,
+            appData,
+            kind,
+         }: {
+            userMeta: UserMeta
+            roomId: string
+            transportId: string
+            rtpParameters: RtpParameters
+            appData: any
+            kind: MediaKind
+         } = msg
+         if (allRooms.has(roomId)) {
+            await allRooms
+               .get(roomId)!
+               .getPeer(userMeta)
+               .setProducerTransport({ id: transportId, rtpParameters, kind })
+         } else {
+            throw new Error("addProducerTransport error")
          }
       })
 
