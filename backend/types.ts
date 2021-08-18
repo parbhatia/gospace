@@ -3,6 +3,8 @@ import {
    IceCandidate,
    IceParameters,
    RtpParameters,
+   SctpParameters,
+   SctpStreamParameters,
 } from "mediasoup/lib/types"
 
 export interface UserMeta {
@@ -17,10 +19,18 @@ export interface ConsumeServerConsumeParams {
    producerId: string
    appData: any
 }
+export interface ConsumeDataConsumerParams {
+   id: string
+   dataProducerId: string
+   sctpStreamParameters: SctpStreamParameters | undefined
+   label: string
+   protocol: string
+}
 
 export interface WebRtcTransportParams {
    id: String
    iceParameters: IceParameters
    iceCandidates: Array<IceCandidate>
    dtlsParameters: DtlsParameters
+   sctpParameters: SctpParameters | undefined
 }

@@ -7,16 +7,18 @@ import {
    Transport,
    Producer,
    Consumer,
+   DataConsumer,
+   DataProducer,
+   SctpStreamParameters,
 } from "mediasoup/lib/types"
 import cors from "cors"
 import { Server, Socket } from "socket.io"
 import { serverPort } from "./config/index"
-import Room, { allRooms, createNewRoom, roomExists } from "./Room"
-import Peer from "./Peer"
-import WorkerFactory from "./WorkerFactory"
+import Room from "./Room"
 import { DtlsParameters } from "mediasoup/src/WebRtcTransport"
 import { UserMeta, WebRtcTransportParams } from "./types"
 import { MediaKind } from "mediasoup/lib/RtpParameters"
+import RoomFactory from "./RoomFactory"
 
 let io: Server
 export { io }
@@ -35,7 +37,7 @@ const main = async () => {
    })
    const port: number = serverPort
 
-   const workerFactory = await WorkerFactory.init()
+   const roomFactory = await RoomFactory.init()
 
    io.on("connection", async (socket: Socket) => {
       // console.log("Socket connected! :D")
@@ -47,12 +49,12 @@ const main = async () => {
             msg
          console.log(`Peer ${userMeta.name} requests Router RTP capabilities`)
          let room: Room
-         if (!roomExists(roomId)) {
+         if (!roomFactory.roomExists(roomId)) {
             console.log(`Room with id ${roomId} does not exist. Creating room`)
-            room = await createNewRoom(workerFactory)
+            room = await roomFactory.createNewRoom()
             console.log(`Creating new room with id ${roomId}`)
          } else {
-            room = allRooms.get(roomId)!
+            room = roomFactory.getRoom(roomId)!
          }
 
          //Join socket to new room
@@ -74,8 +76,8 @@ const main = async () => {
          console.log(
             `Peer ${userMeta.name} requests WebRtc transport connection`,
          )
-         if (allRooms.has(roomId)) {
-            const room = allRooms.get(roomId)!
+         if (roomFactory.roomExists(roomId)) {
+            const room = roomFactory.getRoom(roomId)!
             let peer
             if (!room.hasPeer(userMeta)) {
                peer = await room.createPeer({ userMeta, socket })
@@ -117,9 +119,9 @@ const main = async () => {
          console.log(
             `Peer ${userMeta.name} requests to connect transport with id ${transportId}`,
          )
-         if (allRooms.has(roomId)) {
-            await allRooms
-               .get(roomId)!
+         if (roomFactory.roomExists(roomId)) {
+            await roomFactory
+               .getRoom(roomId)!
                .getPeer(userMeta)
                .connectTransport({ id: transportId, dtlsParameters })
             console.log(
@@ -153,9 +155,9 @@ const main = async () => {
             `Peer ${userMeta.name} requests to add producer transport with transportId ${transportId}`,
          )
          try {
-            if (allRooms.has(roomId)) {
-               const newProducer: Producer | null = await allRooms
-                  .get(roomId)!
+            if (roomFactory.roomExists(roomId)) {
+               const newProducer: Producer | null = await roomFactory
+                  .getRoom(roomId)!
                   .getPeer(userMeta)
                   .addProducerTransport({
                      id: transportId,
@@ -176,6 +178,53 @@ const main = async () => {
             callback({ Status: "failure", error: e })
             console.log(
                `Peer ${userMeta.name} request to add producer transport with transportId ${transportId} failed!`,
+            )
+         }
+      })
+      socket.on("addDataProducer", async (msg, callback) => {
+         const {
+            userMeta,
+            roomId,
+            transportId,
+            sctpStreamParameters,
+            label,
+            protocol,
+         }: {
+            userMeta: UserMeta
+            roomId: string
+            transportId: string
+            sctpStreamParameters: SctpStreamParameters
+            label: string
+            protocol: string
+         } = msg
+         console.log(
+            `Peer ${userMeta.name} requests to add data producer with transportId ${transportId}`,
+         )
+         try {
+            if (roomFactory.roomExists(roomId)) {
+               const newProducer: DataProducer | null = await roomFactory
+                  .getRoom(roomId)!
+                  .getPeer(userMeta)
+                  .addDataProducer({
+                     id: transportId,
+                     sctpStreamParameters,
+                     label,
+                     protocol,
+                  })
+               if (!newProducer) {
+                  throw new Error("Invalid producer")
+               }
+               console.log(
+                  `New data producer added for Peer ${userMeta.name} with id ${newProducer.id}`,
+               )
+               callback({ Status: "success", id: newProducer.id })
+            } else {
+               console.log(`No room with ${roomId} exists`)
+            }
+         } catch (e) {
+            callback({ Status: "failure", error: e })
+            console.log(
+               `Peer ${userMeta.name} request to add data producer with transportId ${transportId} failed!`,
             )
          }
       })
@@ -201,8 +250,8 @@ const main = async () => {
             `Peer ${userMeta.name} requests to add consumer transport with transportId ${transportId} and producerId ${producerId}`,
          )
          try {
-            if (allRooms.has(roomId)) {
-               const room = allRooms.get(roomId)!
+            if (roomFactory.roomExists(roomId)) {
+               const room = roomFactory.getRoom(roomId)!
                const newConsumerParams = await room
                   .getPeer(userMeta)
                   .addConsumerTransport({
@@ -229,13 +278,54 @@ const main = async () => {
             callback({ Status: "failure", Error: e })
          }
       })
+      socket.on("addDataConsumer", async (msg, callback) => {
+         const {
+            userMeta,
+            roomId,
+            transportId,
+            dataProducerId,
+         }: {
+            userMeta: UserMeta
+            roomId: string
+            transportId: string
+            dataProducerId: string
+         } = msg
+         console.log(
+            `Peer ${userMeta.name} requests to add data consumer with transportId ${transportId} and producerId ${dataProducerId}`,
+         )
+         try {
+            if (roomFactory.roomExists(roomId)) {
+               const room = roomFactory.getRoom(roomId)!
+               const newConsumerParams = await room
+                  .getPeer(userMeta)
+                  .addDataConsumer({
+                     id: transportId,
+                     dataProducerId,
+                  })
+               if (!newConsumerParams) {
+                  throw new Error("Unable to add data consumer")
+               }
+               console.log(
+                  `New data consumer added for Peer ${userMeta.name} with id ${newConsumerParams.id}`,
+               )
+               callback({ Status: "success", newConsumerParams })
+            } else {
+               console.log(`No room with ${roomId} exists`)
+            }
+         } catch (e) {
+            console.log(
+               `Peer ${userMeta.name} request to adddata consumerwith transportId ${transportId} failed!`,
+            )
+            callback({ Status: "failure", Error: e })
+         }
+      })
 
       socket.on("removePeer", async (msg) => {
          const { roomId, userMeta }: { roomId: string; userMeta: UserMeta } =
             msg
          console.log(`Peer ${userMeta.name} requests to be removed from room`)
-         if (allRooms.has(roomId)) {
-            const roomOfPeer = allRooms.get(roomId)!
+         if (roomFactory.roomExists(roomId)) {
+            const roomOfPeer = roomFactory.getRoom(roomId)!
             await roomOfPeer.removePeer(userMeta)
          }
          console.log("Peer successfully removed from room", userMeta.id)
@@ -247,14 +337,17 @@ const main = async () => {
          console.log(
             `Peer ${userMeta.name} requests to remove room ${roomId} from worker!", userMeta.id`,
          )
-         if (allRooms.has(roomId)) {
-            const roomOfPeer = allRooms.get(roomId)!
+         if (roomFactory.roomExists(roomId)) {
+            const roomOfPeer = roomFactory.getRoom(roomId)!
             await roomOfPeer.removeAllPeers()
-            allRooms.delete(roomId)
+            roomFactory.removeRoom(roomId)
             console.log(`Room ${roomId} successfully removed`)
          }
       })
       socket.on("disconnect", async () => {
+         roomFactory.getAllRooms().forEach(async (room, roomId) => {
+            await await room.removePeerWithSocket(socket)
+         })
          console.log("A user disconnected :(")
       })
    })
