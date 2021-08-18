@@ -5,6 +5,8 @@ import WorkerFactory from "./WorkerFactory"
 import Peer from "./Peer"
 import { UserMeta } from "./types"
 import { io } from "./main"
+import { Socket } from "socket.io"
+import { RtpCapabilities } from "mediasoup/lib/types"
 
 // const uniqueRoomIdGenerator = nanoid.customAlphabet(
 //    "ABCDEFGHIJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz123456789",
@@ -74,24 +76,36 @@ class Room {
    getRouter = () => this.router
    getWorker = () => this.worker
    getId = () => this.id
-   createPeer = async ({ userMeta }: { userMeta: UserMeta }): Promise<Peer> => {
+   createPeer = async ({
+      userMeta,
+      socket,
+   }: {
+      userMeta: UserMeta
+      socket: Socket
+   }): Promise<Peer> => {
       const router: Router = this.getRouter()
-      const newPeer: Peer = await Peer.init({
+      const newPeer: Peer = new Peer({
          userMeta,
          router,
+         socket,
+         roomId: this.id,
       })
       this.addPeer(newPeer)
-      this.broadcastFrom(newPeer)
       return newPeer
    }
    addPeer = (peer: Peer) => this.peers.set(peer.getUserMeta().id, peer)
    getPeer = (userMeta: UserMeta): Peer => this.peers.get(userMeta.id)!
-   broadcastFrom = (peer: Peer) => {
-      // room notifies all peers that new peer has been added a producer, and peers should start consuming
-      const peerId = peer.getUserMeta().id
-      io.to(this.id).emit("newProducer", {
-         peerId: peerId,
-         producerTransportId: peer.getProducerTransport({ id: peerId }),
+   hasPeer = (userMeta: UserMeta): boolean => this.peers.has(userMeta.id)
+   removePeer = async (userMeta: UserMeta) => {
+      const peerToRemove = this.getPeer(userMeta)
+      await peerToRemove.closeTransports()
+      this.peers.delete(userMeta.id)
+      console.log(`Removing peer ${userMeta.name} from room`)
+   }
+   removeAllPeers = async () => {
+      //Convert to Promise.all later
+      this.peers.forEach(async (peerToRemove, peerId) => {
+         await this.removePeer(peerToRemove.getUserMeta())
       })
    }
 }

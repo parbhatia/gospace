@@ -3,27 +3,38 @@ import { useRef, useEffect, useState } from "react"
 import { io, Socket } from "socket.io-client"
 import { SERVER_BASE_URL } from "../config"
 import { RtpCapabilities } from "mediasoup-client/lib/RtpParameters"
-import { Transport } from "mediasoup/lib/types"
 import {
    DtlsParameters,
    IceCandidate,
    IceParameters,
    TransportOptions,
+   Transport,
 } from "mediasoup-client/lib/Transport"
+import { ConsumeServerConsumeParams } from "../lib/types"
 import { Producer } from "mediasoup-client/lib/Producer"
+import { Consumer } from "mediasoup-client/lib/Consumer"
+
+function getRandomInt(max) {
+   return Math.floor(Math.random() * max)
+}
 
 export default function Home() {
    const videoRef: any = useRef()
    const socketRef: any = useRef()
    const deviceRef: any = useRef()
    const [deviceConnected, setDeviceConnected] = useState(false)
+   const randomId = getRandomInt(50).toString()
    const [userMeta, setUserMeta] = useState({
-      id: "1234",
-      name: "kvothe",
+      id: randomId,
+      name: randomId,
    })
    const [socketConnected, setSocketConnected] = useState(false)
    const [roomId, setRoomId] = useState("my-room")
    //  const [videoProducer, setVideoProducer]: Transport = useState()
+   const [producerTransportConnected, setProducerTransportConnected] =
+      useState(false)
+   const [consumerTransportConnected, setConsumerTransportConnected] =
+      useState(false)
    const [producing, setProducing] = useState(false)
    const [errors, setErrors] = useState({})
    const [stream, setStream] = useState<MediaStream>()
@@ -31,8 +42,9 @@ export default function Home() {
    const consumerTransport = useRef<Transport>()
    const videoProducer = useRef<Transport>()
    const audioProducer = useRef<Transport>()
-   const producers = useRef<Array<Transport>>([])
-   const consumers = useRef<Array<Transport>>([])
+   const producers = useRef<Array<Producer>>([])
+   const consumers = useRef<Array<Consumer>>([])
+   const remoteVideoRef: any = useRef()
 
    const monitorProducerTransport = () => {
       if (!producerTransport.current)
@@ -40,7 +52,7 @@ export default function Home() {
       const pt: Transport = producerTransport.current
       pt.on("connect", async ({ dtlsParameters }, callback, errback) => {
          // Signal local DTLS parameters to the server side transport.
-         console.log("transport.connect happened")
+         console.log("1", pt.id)
          try {
             socketRef.current.emit(
                "connectTransport",
@@ -55,7 +67,7 @@ export default function Home() {
                      // Tell the transport that parameters were transmitted.
                      callback()
                   } else {
-                     throw new Error("Failed transport connect")
+                     throw new Error("Failed Producer transport connect")
                   }
                },
             )
@@ -80,19 +92,17 @@ export default function Home() {
                   appData: parameters.appData,
                },
                (response) => {
-                  console.log(response)
-                  callback()
+                  if (response.Status === "success") {
+                     const newProducerTransportId = response.id
+                     console.log(newProducerTransportId)
+                     // Tell the transport that parameters were transmitted and provide it with the
+                     // server side producer's id.
+                     callback({ id: newProducerTransportId })
+                  } else {
+                     throw new Error("Failed Producer transport connect")
+                  }
                },
             )
-            //make sure callback() is called in the right scope
-
-            // Let's assume the server included the created producer id in the response
-            // data object.
-            //  const { id } = data
-
-            // Tell the transport that parameters were transmitted and provide it with the
-            // server side producer's id.
-            //  callback({ id })
          } catch (error) {
             // Tell the transport that something was wrong.
             errback(error)
@@ -102,19 +112,146 @@ export default function Home() {
       pt.on("connectionstatechange", (state: string) => {
          switch (state) {
             case "connected":
-               setProducing(true)
+               setProducerTransportConnected(true)
                break
             case "connecting":
                break
             case "failed":
                setErrors({ ...errors, ProducingFailed: true })
-               setProducing(false)
+               setProducerTransportConnected(false)
                pt.close()
                break
             default:
-               setProducing(false)
+               break
          }
       })
+   }
+
+   const monitorConsumerTransport = () => {
+      if (!consumerTransport.current)
+         throw new Error("Consumer Transport Invalid")
+      console.log("Monitoring consumer transport")
+      const ct: Transport = consumerTransport.current
+      ct.on("connect", async ({ dtlsParameters }, callback, errback) => {
+         // Signal local DTLS parameters to the server side transport.
+         try {
+            console.log("3", ct.id)
+            socketRef.current.emit(
+               "connectTransport",
+               {
+                  userMeta,
+                  roomId,
+                  transportId: ct.id,
+                  dtlsParameters,
+               },
+               (response) => {
+                  if (response.Status === "success") {
+                     // Tell the transport that parameters were transmitted.
+                     callback()
+                  } else {
+                     throw new Error("Failed Consumer transport connect")
+                  }
+               },
+            )
+            // callback()
+         } catch (error) {
+            console.error("Error with transport", error)
+            // Tell the transport that something was wrong.
+            errback(error)
+         }
+      })
+
+      ct.on("connectionstatechange", (state: string) => {
+         switch (state) {
+            case "connected":
+               setConsumerTransportConnected(true)
+               //  socketRef.current.emit("resumeConsumerStream")
+               break
+            case "connecting":
+               break
+            //emit resume consumer stream object
+            case "failed":
+               setErrors({ ...errors, ConsumingFailed: true })
+               setConsumerTransportConnected(false)
+               ct.close()
+               break
+            default:
+               break
+         }
+      })
+   }
+
+   const createMediaConsumerStream = async (
+      track: MediaStreamTrack,
+   ): Promise<MediaStream> => {
+      const newStream = new MediaStream([track])
+      return newStream
+   }
+
+   const createConsumer = async ({ producerId }: { producerId: string }) => {
+      if (
+         !consumerTransport ||
+         !consumerTransport.current ||
+         !deviceRef ||
+         !deviceRef.current
+      ) {
+         throw new Error("Invalid consumer transport or device")
+      }
+      const { rtpCapabilities } = deviceRef.current
+      await socketRef.current.emit(
+         "addConsumerTransport",
+         {
+            userMeta,
+            roomId,
+            transportId: consumerTransport.current.id,
+            producerId,
+            rtpCapabilities,
+            appData: {},
+            paused: false,
+         },
+         async (response: any) => {
+            console.log(response)
+            if (response.Status !== "success") {
+               throw new Error(
+                  "Failed Producer transport connect : " + response.Error,
+               )
+            }
+            console.log("Creating new consumer")
+            const {
+               id,
+               kind,
+               rtpParameters,
+               producerId,
+               appData,
+            }: ConsumeServerConsumeParams = response.newConsumerParams
+            const consumer = await consumerTransport.current!.consume({
+               id,
+               kind,
+               producerId,
+               rtpParameters,
+               appData,
+            })
+            const { track }: { track: MediaStreamTrack } = consumer
+            const stream: MediaStream = await createMediaConsumerStream(track)
+            remoteVideoRef.current.srcObject = stream
+            consumers.current.push(consumer)
+         },
+      )
+   }
+
+   const initConsumeMedia = async ({
+      peerId,
+      producerTransportId,
+   }: {
+      peerId: string
+      producerTransportId: string
+   }) => {
+      try {
+         await createConsumer({ producerId: producerTransportId })
+      } catch (err) {
+         //Show failed to consume media from new producer message
+         console.error(err)
+      }
    }
 
    const createMediaStream = async (
@@ -127,26 +264,28 @@ export default function Home() {
       mediaConstraints: MediaStreamConstraints,
    ) => {
       try {
+         if (!producerTransport || !producerTransport.current) {
+            throw new Error("No producer transport added")
+         }
          const stream: MediaStream = await createMediaStream(mediaConstraints)
          videoRef.current.srcObject = stream
          videoRef.current.muted = true
          const track = stream.getVideoTracks()[0]
-         console.log(track)
-         console.log(producerTransport.current)
-         const producer = await producerTransport.current.produce({
+         //  console.log(track)
+         const producer = await producerTransport.current!.produce({
             track,
          })
-         //  producer.on("trackended", () => {
-         //     console.log("trackended")
-         //  })
+         producer.on("trackended", () => {
+            console.log("trackended")
+         })
 
-         //  producer.on("transportclose", () => {
-         //     console.log("Producer transport close")
-         //  })
+         producer.on("transportclose", () => {
+            console.log("Producer transport close")
+         })
 
-         //  producer.on("close", () => {
-         //     console.log("close")
-         //  })
+         producer.on("close", () => {
+            console.log("close")
+         })
          producers.current.push(producer)
       } catch (err) {
          console.error(err)
@@ -170,27 +309,37 @@ export default function Home() {
    const requestCreateWebRtcTransport = async (
       socket: Socket,
       device: Device,
+      transportType: "producer" | "consumer",
    ) => {
-      socket.emit("requestCreateWebRtcTransport", {
-         roomId,
-         userMeta,
-         //we need these fields later
-         //  forceTcp: false,
-         //  rtpCapabilities: device.rtpCapabilities,
-      })
-   }
-
-   const receiveWebRtcTransportParams = async ({
-      transportParams,
-   }: {
-      transportParams: TransportOptions
-   }) => {
-      console.log("receiveWebRtcTransportParams")
-      //Create new transport for sending media to server. At this point a mediasoup server has already created an identical transport with the same transport params
-      const transport: Transport =
-         deviceRef.current.createSendTransport(transportParams)
-      producerTransport.current = transport
-      monitorProducerTransport()
+      socket.emit(
+         "requestCreateWebRtcTransport",
+         {
+            roomId,
+            userMeta,
+         },
+         async (response: any) => {
+            if (response.Status === "success") {
+               const { transportParams } = response
+               if (transportType === "producer") {
+                  //Create new transport for sending media to server. At this point a mediasoup server has already created an identical transport with the same transport param
+                  const newProducerTransport: Transport =
+                     device.createSendTransport(transportParams)
+                  producerTransport.current = newProducerTransport
+                  monitorProducerTransport()
+               } else {
+                  //Create new transport for receiving media from server. At this point a mediasoup server has already created an identical transport with the same transport params
+                  const newConsumerTransport: Transport =
+                     device.createRecvTransport(transportParams)
+                  consumerTransport.current = newConsumerTransport
+                  monitorConsumerTransport()
+               }
+            } else {
+               throw new Error(
+                  "Unable to create transport for " + transportType,
+               )
+            }
+         },
+      )
    }
 
    //Create device and initialize it.
@@ -199,17 +348,27 @@ export default function Home() {
       routerRtpCapabilities: RtpCapabilities,
    ): Promise<Device> => {
       const device = new Device()
-      deviceRef.current = device
       await device.load({ routerRtpCapabilities })
+      deviceRef.current = device
       setDeviceConnected(true)
       return device
    }
 
+   const initializeClientTransports = async (
+      socket: Socket,
+      device: Device,
+   ) => {
+      //Create transport for producer and consumer
+      await requestCreateWebRtcTransport(socket, device, "producer")
+      await requestCreateWebRtcTransport(socket, device, "consumer")
+   }
+
    //Establishes connection to socket-io server
    const establishSocketIoConnection = async () => {
-      if (socketRef.current == null) {
+      if (!socketRef.current) {
          const newSocket: Socket = io(SERVER_BASE_URL, {
             path: "/server/",
+            withCredentials: false,
          })
          socketRef.current = newSocket
       }
@@ -229,16 +388,10 @@ export default function Home() {
             try {
                const routerRtpCapabilities = msg
                const device = await loadDevice(routerRtpCapabilities)
-               await requestCreateWebRtcTransport(socket, device)
+               await initializeClientTransports(socket, device)
             } catch (e) {
                setErrors({ ...errors, RTPCapabilitiesPayload: true })
             }
-         })
-         socket.on("receiveWebRtcTransportParams", async (msg: any) => {
-            const producerTransportParams = msg
-            await receiveWebRtcTransportParams({
-               transportParams: producerTransportParams,
-            })
          })
          socket.on("newProducer", (msg: any) => {
             const {
@@ -247,30 +400,23 @@ export default function Home() {
             }: { peerId: string; producerTransportId: string } = msg
             //since room broadcasts new producers to everyone, ignore this request for self join
             if (userMeta.id !== peerId) {
+               console.log("Client received broadcast message")
+               initConsumeMedia({ peerId, producerTransportId })
             }
          })
-         socket.on("message", (msg: any) => {
-            console.log("Client received message:", msg)
-            // if (msg.type === "welcome") {
-            //    if (socket.id !== message.id) {
-            //       console.warn(
-            //          "WARN: something wrong with clientID",
-            //          socket.io,
-            //          message.id,
-            //       )
-            //    }
+         //  socket.on("message", (msg: any) => {
+         //     console.log("Client received message:", msg)
 
-            //    clientId.current = message.id
-            //    console.log("connected to server. clientId=" + clientId.current)
-            //    resolve()
-            // } else {
-            //    console.error("UNKNOWN message from server:", message)
-            // }
-         })
+         //  })
       })
    }
    const disconnectSocketIoConnection = () => {
-      if (socketRef.current) socketRef.current.disconnect()
+      if (socketRef.current) {
+         socketRef.current.emit("removePeer", { userMeta, roomId })
+         socketRef.current.disconnect()
+      }
+      if (consumerTransport.current) consumerTransport.current.close()
+      if (producerTransport.current) producerTransport.current.close()
    }
    useEffect(() => {
       establishSocketIoConnection()
@@ -291,10 +437,23 @@ export default function Home() {
             ) : (
                <div className="lg bg-red-500">DEVICE DISCONNECTED</div>
             )}
-            {producing ? (
-               <div className="lg bg-green-500">PRODUCING</div>
+            {producerTransportConnected ? (
+               <div className="lg bg-green-500">
+                  PRODUCER TRANSPORT CONNECTED
+               </div>
             ) : (
-               <div className="lg bg-red-500">NOT PRODUCING</div>
+               <div className="lg bg-red-500">
+                  PRODUCER TRANSPORT DISCONNECTED
+               </div>
+            )}
+            {consumerTransportConnected ? (
+               <div className="lg bg-green-500">
+                  CONSUMER TRANSPORT CONNECTED
+               </div>
+            ) : (
+               <div className="lg bg-red-500">
+                  CONSUMER TRANSPORT DISCONNECTED
+               </div>
             )}
             <h4>Errors:</h4>
             <div>{JSON.stringify(errors)}</div>
@@ -307,22 +466,39 @@ export default function Home() {
                         })
                      }
                   }}
-                  disabled={videoProducer.current}
+                  // disabled={videoProducer.current}
                >
                   Produce Video
                </button>
             </div>
-            My Video
-            <video
-               autoPlay
-               controls
-               playsInline
-               ref={videoRef}
-               style={{
-                  width: "500px",
-                  height: "500px",
-               }}
-            ></video>
+            <div className="flex">
+               <div>
+                  My Video
+                  <video
+                     autoPlay
+                     controls
+                     playsInline
+                     ref={videoRef}
+                     style={{
+                        width: "500px",
+                        height: "500px",
+                     }}
+                  ></video>
+               </div>
+               <div>
+                  Remote Video
+                  <video
+                     autoPlay
+                     controls
+                     playsInline
+                     ref={remoteVideoRef}
+                     style={{
+                        width: "500px",
+                        height: "500px",
+                     }}
+                  ></video>
+               </div>
+            </div>
          </div>
       </main>
    )

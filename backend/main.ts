@@ -1,13 +1,21 @@
 import express from "express"
 import { createServer } from "http"
-import { Router, RtpCapabilities, RtpParameters } from "mediasoup/lib/types"
+import {
+   Router,
+   RtpCapabilities,
+   RtpParameters,
+   Transport,
+   Producer,
+   Consumer,
+} from "mediasoup/lib/types"
+import cors from "cors"
 import { Server, Socket } from "socket.io"
 import { serverPort } from "./config/index"
 import Room, { allRooms, createNewRoom, roomExists } from "./Room"
 import Peer from "./Peer"
 import WorkerFactory from "./WorkerFactory"
 import { DtlsParameters } from "mediasoup/src/WebRtcTransport"
-import { UserMeta } from "./types"
+import { UserMeta, WebRtcTransportParams } from "./types"
 import { MediaKind } from "mediasoup/lib/RtpParameters"
 
 let io: Server
@@ -15,25 +23,34 @@ export { io }
 
 const main = async () => {
    const app = express()
+   app.use(cors)
    const server = createServer(app)
    io = new Server(server, {
       path: "/server/",
+      cors: {
+         origin: "*",
+         methods: ["GET", "POST"],
+         credentials: false,
+      },
    })
    const port: number = serverPort
 
    const workerFactory = await WorkerFactory.init()
 
    io.on("connection", async (socket: Socket) => {
-      console.log("Socket connected! :D")
+      // console.log("Socket connected! :D")
 
       socket.on("requestRouterRTPCapabilities", async (msg) => {
          //Create a room on this request
 
-         console.log("Client requests Router's RTP capabilities")
-         const { roomId, userMeta }: { roomId: string; userMeta: string } = msg
+         const { roomId, userMeta }: { roomId: string; userMeta: UserMeta } =
+            msg
+         console.log(`Peer ${userMeta.name} requests Router RTP capabilities`)
          let room: Room
          if (!roomExists(roomId)) {
+            console.log(`Room with id ${roomId} does not exist. Creating room`)
             room = await createNewRoom(workerFactory)
+            console.log(`Creating new room with id ${roomId}`)
          } else {
             room = allRooms.get(roomId)!
          }
@@ -44,32 +61,48 @@ const main = async () => {
          const routerRTPCapabilities: RtpCapabilities =
             room.getRTPCapabilities()
          if (!routerRTPCapabilities) {
-            throw new Error("Error requesting Router's RTP Capabilities")
+            console.log(
+               `Peer ${userMeta.name}'s request of Router RTP capabilities failed`,
+            )
          }
          socket.emit("RTPCapabilitiesPayload", routerRTPCapabilities)
       })
 
-      socket.on("requestCreateWebRtcTransport", async (msg) => {
-         console.log("Client requests Create Producer Transport")
+      socket.on("requestCreateWebRtcTransport", async (msg, callback) => {
          const { roomId, userMeta }: { userMeta: UserMeta; roomId: string } =
             msg
+         console.log(
+            `Peer ${userMeta.name} requests WebRtc transport connection`,
+         )
          if (allRooms.has(roomId)) {
             const room = allRooms.get(roomId)!
-            const newPeer = await room.createPeer({ userMeta })
+            let peer
+            if (!room.hasPeer(userMeta)) {
+               peer = await room.createPeer({ userMeta, socket })
+            } else {
+               peer = room.getPeer(userMeta)
+            }
+            const params: WebRtcTransportParams =
+               await peer.createWebRtcTransport()
             //send created WebRtc transport's params to client, so client can use the params to create a Transport for communication
-            socket.emit(
-               "receiveWebRtcTransportParams",
-               newPeer.getTransportParams(),
+            console.log(
+               `Peer ${userMeta.name} successfully received WebRtc transport connection`,
             )
+            callback({
+               Status: "success",
+               transportParams: params,
+            })
          } else {
-            throw new Error(
-               "requestCreateWebRtcTransport failed. Room does not exist",
+            callback({
+               Status: "failure",
+            })
+            console.log(
+               `Peer ${userMeta.name} WebRtc transport connection request failed`,
             )
          }
       })
 
       socket.on("connectTransport", async (msg, callback) => {
-         console.log("CONNECTING TRANSPORT IN SERVER")
          const {
             userMeta,
             roomId,
@@ -81,34 +114,26 @@ const main = async () => {
             transportId: string
             dtlsParameters: DtlsParameters
          } = msg
+         console.log(
+            `Peer ${userMeta.name} requests to connect transport with id ${transportId}`,
+         )
          if (allRooms.has(roomId)) {
-            allRooms
+            await allRooms
                .get(roomId)!
                .getPeer(userMeta)
                .connectTransport({ id: transportId, dtlsParameters })
+            console.log(
+               `Peer ${userMeta.name} transport connection successful with transport id ${transportId}`,
+            )
             callback({ Status: "success" })
          } else {
+            console.log(
+               `Peer ${userMeta.name} transport connection failed with transport id ${transportId}`,
+            )
             callback({ Status: "failure" })
          }
       })
-      // socket.on("broadcast", async (msg) => {
-      //    const {
-      //       userMeta,
-      //       roomId,
-      //    }: {
-      //       userMeta: UserMeta
-      //       roomId: string
-      //    } = msg
-      //    if (allRooms.has(roomId)) {
-      //       await allRooms
-      //          .get(roomId)!
-      //          .getPeer(userMeta)
-      //          .setProducerTransport({ id: transportId, rtpParameters, kind })
-      //    } else {
-      //       throw new Error("addProducerTransport error")
-      //    }
-      // })
-      socket.on("addProducerTransport", async (msg) => {
+      socket.on("addProducerTransport", async (msg, callback) => {
          const {
             userMeta,
             roomId,
@@ -124,16 +149,111 @@ const main = async () => {
             appData: any
             kind: MediaKind
          } = msg
-         if (allRooms.has(roomId)) {
-            await allRooms
-               .get(roomId)!
-               .getPeer(userMeta)
-               .setProducerTransport({ id: transportId, rtpParameters, kind })
-         } else {
-            throw new Error("addProducerTransport error")
+         console.log(
+            `Peer ${userMeta.name} requests to add producer transport with transportId ${transportId}`,
+         )
+         try {
+            if (allRooms.has(roomId)) {
+               const newProducer: Producer | null = await allRooms
+                  .get(roomId)!
+                  .getPeer(userMeta)
+                  .addProducerTransport({
+                     id: transportId,
+                     rtpParameters,
+                     kind,
+                  })
+               if (!newProducer) {
+                  throw new Error("Invalid producer")
+               }
+               console.log(
+                  `New producer transport added for Peer ${userMeta.name} with id ${newProducer.id}`,
+               )
+               callback({ Status: "success", id: newProducer.id })
+            } else {
+               console.log(`No room with ${roomId} exists`)
+            }
+         } catch (e) {
+            callback({ Status: "failure", error: e })
+            console.log(
+               `Peer ${userMeta.name} request to add producer transport with transportId ${transportId} failed!`,
+            )
+         }
+      })
+      socket.on("addConsumerTransport", async (msg, callback) => {
+         const {
+            userMeta,
+            roomId,
+            transportId,
+            producerId,
+            rtpCapabilities,
+            appData,
+            paused,
+         }: {
+            userMeta: UserMeta
+            roomId: string
+            transportId: string
+            producerId: string
+            rtpCapabilities: RtpCapabilities
+            appData: any
+            paused: boolean | undefined
+         } = msg
+         console.log(
+            `Peer ${userMeta.name} requests to add consumer transport with transportId ${transportId} and producerId ${producerId}`,
+         )
+         try {
+            if (allRooms.has(roomId)) {
+               const room = allRooms.get(roomId)!
+               const newConsumerParams = await room
+                  .getPeer(userMeta)
+                  .addConsumerTransport({
+                     id: transportId,
+                     producerId,
+                     rtpCapabilities,
+                     appData,
+                     paused,
+                  })
+               if (!newConsumerParams) {
+                  throw new Error("Unable to add consumer transport")
+               }
+               console.log(
+                  `New consumer transport added for Peer ${userMeta.name} with id ${newConsumerParams.id}`,
+               )
+               callback({ Status: "success", newConsumerParams })
+            } else {
+               console.log(`No room with ${roomId} exists`)
+            }
+         } catch (e) {
+            console.log(
+               `Peer ${userMeta.name} request to add consumer transport with transportId ${transportId} failed!`,
+            )
+            callback({ Status: "failure", Error: e })
          }
       })
 
+      socket.on("removePeer", async (msg) => {
+         const { roomId, userMeta }: { roomId: string; userMeta: UserMeta } =
+            msg
+         console.log(`Peer ${userMeta.name} requests to be removed from room`)
+         if (allRooms.has(roomId)) {
+            const roomOfPeer = allRooms.get(roomId)!
+            await roomOfPeer.removePeer(userMeta)
+         }
+         console.log("Peer successfully removed from room", userMeta.id)
+      })
+      //Not sure where removing room from Peer will be called yet
+      socket.on("removeRoom", async (msg) => {
+         const { roomId, userMeta }: { roomId: string; userMeta: UserMeta } =
+            msg
+         console.log(
+            `Peer ${userMeta.name} requests to remove room ${roomId} from worker!", userMeta.id`,
+         )
+         if (allRooms.has(roomId)) {
+            const roomOfPeer = allRooms.get(roomId)!
+            await roomOfPeer.removeAllPeers()
+            allRooms.delete(roomId)
+            console.log(`Room ${roomId} successfully removed`)
+         }
+      })
       socket.on("disconnect", async () => {
          console.log("A user disconnected :(")
       })
