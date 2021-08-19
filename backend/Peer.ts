@@ -93,8 +93,12 @@ class Peer {
       })
       transport.on("routerclose", () => {
          this.removeTransport({ id: transport.id })
+         transport.close()
       })
       transport.on("close", () => {
+         console.log(
+            `Peer ${this.userMeta.name}'s transport with ${transport.id} has closed`,
+         )
          this.removeTransport({ id: transport.id })
       })
       this.transports.set(transport.id, transport)
@@ -155,6 +159,31 @@ class Peer {
       this.dataConsumers.delete(id)
    }
 
+   ////////////////close transports/////////////////
+   handleTransportClosed = ({ id }: { id: string }) => {
+      this.getTransport({ id })?.close()
+      this.removeTransport({ id })
+   }
+   handleConsumerTransportClosed = ({ id }: { id: string }) => {
+      this.getConsumerTransport({ id })?.close()
+      this.removeConsumerTransport({ id, notifyClient: false })
+   }
+   handleProducerTransportClosed = ({ id }: { id: string }) => {
+      this.getProducerTransport({ id })?.close()
+      this.removeProducerTransport({ id })
+   }
+   handleDataProducerClosed = ({ id }: { id: string }) => {
+      this.getDataProducer({ id })?.close()
+      this.removeDataProducer({ id })
+   }
+   handleDataConsumerClosed = ({ id }: { id: string }) => {
+      this.getDataConsumer({ id })?.close()
+      this.removeDataConsumer({ id })
+   }
+   ////////////////close transports/////////////////
+
+   getDataProducer = ({ id }: { id: string }) => this.dataProducers.get(id)
+   getDataConsumer = ({ id }: { id: string }) => this.dataConsumers.get(id)
    getProducerTransport = ({ id }: { id: string }) =>
       this.producerTransports.get(id)
    getConsumerTransport = ({ id }: { id: string }) =>
@@ -176,6 +205,10 @@ class Peer {
          // This new transport has a different id
          const newId = newProducerTransport.id
          newProducerTransport.on("transportclose", () => {
+            console.log(
+               `Peer ${this.userMeta.name}'s producer transport with is closing with ${id}`,
+            )
+            newProducerTransport.close()
             this.removeProducerTransport({ id: newProducerTransport.id })
          })
          this.producerTransports.set(newId, newProducerTransport)
@@ -314,6 +347,10 @@ class Peer {
             appData,
          })
          newConsumerTransport.on("transportclose", () => {
+            console.log(
+               `Peer ${this.userMeta.name}'s received a transport closed notification with id ${producerId}`,
+            )
+            newConsumerTransport.close()
             this.removeConsumerTransport({
                id: newConsumerTransport.id,
                notifyClient: true,
@@ -323,6 +360,7 @@ class Peer {
             console.log(
                `Peer ${this.userMeta.name}'s received a producer closed notification with id ${producerId}`,
             )
+            newConsumerTransport.close()
             this.removeConsumerTransport({
                id: newConsumerTransport.id,
                notifyClient: true,

@@ -157,10 +157,10 @@ export default function Home() {
       })
       pt.observer.on("close", () => {
          console.log("PT observed transport close")
-         producers.current.forEach((p) => p.close())
-         producers.current = []
-         dataProducers.current.forEach((dp) => dp.close())
-         dataProducers.current = []
+         //  producers.current.forEach((p) => p.close())
+         //  producers.current = []
+         //  dataProducers.current.forEach((dp) => dp.close())
+         //  dataProducers.current = []
       })
    }
 
@@ -214,11 +214,11 @@ export default function Home() {
          }
       })
       ct.observer.on("close", () => {
-         console.log("PT observed consumer transport close")
-         consumers.current.forEach((c) => c.close())
-         consumers.current = []
-         dataConsumers.current.forEach((dc) => dc.close())
-         consumers.current = []
+         //  console.log("PT observed consumer transport close")
+         //  consumers.current.forEach((c) => c.close())
+         //  consumers.current = []
+         //  dataConsumers.current.forEach((dc) => dc.close())
+         //  consumers.current = []
       })
    }
 
@@ -248,6 +248,11 @@ export default function Home() {
          throw new Error("Invalid consumer transport or device")
       }
       const { rtpCapabilities } = deviceRef.current
+      const handleConsumerClosed = (consumerId: string) => {
+         consumers.current = consumers.current.filter(
+            (c) => c.id !== consumerId,
+         )
+      }
       await socketRef.current.emit(
          "addConsumerTransport",
          {
@@ -284,13 +289,11 @@ export default function Home() {
             consumer.on("trackended", () => {})
             consumer.on("transportclose", () => {
                console.log("Consumer transport closed")
-               //  consumers.current.forEach((c) => c.close())
+               handleConsumerClosed(consumer.id)
                consumer.close()
             })
             consumer.on("close", () => {
-               consumers.current = consumers.current.filter(
-                  (c) => c.id !== consumer.id,
-               )
+               handleConsumerClosed(consumer.id)
             })
             const { track }: { track: MediaStreamTrack } = consumer
             const stream: MediaStream = await createMediaConsumerStream(track)
@@ -384,6 +387,16 @@ export default function Home() {
    const initProduceMedia = async (
       mediaConstraints: MediaStreamConstraints,
    ) => {
+      const handleCloseProducer = (producerId: string) => {
+         socketRef.current.emit("producerClosed", {
+            userMeta,
+            roomId,
+            producerId,
+         })
+         producers.current = producers.current.filter(
+            (p) => p.id !== producerId,
+         )
+      }
       try {
          if (!producerTransport || !producerTransport.current) {
             throw new Error("No producer transport added")
@@ -398,19 +411,18 @@ export default function Home() {
          })
          producer.on("trackended", () => {
             // console.log("trackended")
+            // producer.pause()
          })
 
          producer.on("transportclose", () => {
             console.log("Producer transport closed")
+            handleCloseProducer(producer.id)
             producer.close()
-            // producers.forEach((p) => p.close())
          })
 
          producer.on("close", () => {
             console.log("Producer has closed")
-            producers.current = producers.current.filter(
-               (p) => p.id !== producer.id,
-            )
+            handleCloseProducer(producer.id)
          })
          producers.current.push(producer)
       } catch (err) {

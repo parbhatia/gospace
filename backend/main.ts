@@ -320,6 +320,22 @@ const main = async () => {
          }
       })
 
+      socket.on("producerClosed", async (msg) => {
+         const {
+            roomId,
+            userMeta,
+            producerId,
+         }: { roomId: string; userMeta: UserMeta; producerId: string } = msg
+         console.log(`Peer ${userMeta.name}'s producer closed`)
+         if (roomFactory.roomExists(roomId)) {
+            const roomOfPeer = roomFactory.getRoom(roomId)!
+            await roomOfPeer
+               .getPeer(userMeta)
+               .handleProducerTransportClosed({ id: producerId })
+         }
+         console.log("Peer's producer successfully removed", userMeta.name)
+      })
+
       socket.on("removePeer", async (msg) => {
          const { roomId, userMeta }: { roomId: string; userMeta: UserMeta } =
             msg
@@ -328,7 +344,7 @@ const main = async () => {
             const roomOfPeer = roomFactory.getRoom(roomId)!
             await roomOfPeer.removePeer(userMeta)
          }
-         console.log("Peer successfully removed from room", userMeta.id)
+         console.log("Peer successfully removed from room", userMeta.name)
       })
       //Not sure where removing room from Peer will be called yet
       socket.on("removeRoom", async (msg) => {
