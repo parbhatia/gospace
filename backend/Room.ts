@@ -19,26 +19,6 @@ class Room {
       this.router = router
       this.peers = new Map()
    }
-   // static init = async ({ worker }: { worker: Worker }): Promise<Room> => {
-   //    const defaultMediaCodecs = config.mediasoup.router.mediaCodecs
-   //    const router: Router = await Room.createRouterFromWorker({
-   //       worker,
-   //       mediaCodecs: defaultMediaCodecs,
-   //    })
-
-   //    const me = new Room({ worker, mediaCodecs: defaultMediaCodecs, router })
-   //    return me
-   // }
-   // private static createRouterFromWorker = async ({
-   //    worker,
-   //    mediaCodecs,
-   // }: RouterConstructParams) => {
-   //    const router: Router = await worker.createRouter({
-   //       mediaCodecs: mediaCodecs,
-   //    })
-
-   //    return router
-   // }
    monitorRouter = () => {
       this.router.on("workerclose", async () => {
          await this.removeAllPeers()
@@ -62,6 +42,7 @@ class Room {
          router,
          socket,
          roomId: this.id,
+         room: this,
       })
       this.addPeer(newPeer)
       return newPeer
@@ -69,6 +50,22 @@ class Room {
    addPeer = (peer: Peer) => this.peers.set(peer.getUserMeta().id, peer)
    getPeer = (userMeta: UserMeta): Peer => this.peers.get(userMeta.id)!
    hasPeer = (userMeta: UserMeta): boolean => this.peers.has(userMeta.id)
+
+   //Peer's producer has closed, so close all consumers of peers in room that are consuming this producer
+   removeConsumers = ({
+      userMeta,
+      producerId,
+   }: {
+      userMeta: UserMeta
+      producerId: string
+   }) => {
+      console.log(`Room is removing consumers of ${userMeta.name}`)
+      this.peers.forEach((peer, peerId) => {
+         if (userMeta.id !== peerId) {
+            peer.removeConsumerOfProducer({ producerId })
+         }
+      })
+   }
    removePeer = async (userMeta: UserMeta) => {
       const peerToRemove = this.getPeer(userMeta)
       await peerToRemove.closeTransports()

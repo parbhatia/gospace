@@ -8,24 +8,54 @@ import { DataProducer } from "mediasoup-client/lib/DataProducer"
 import { Producer } from "mediasoup-client/lib/Producer"
 import { RtpCapabilities } from "mediasoup-client/lib/RtpParameters"
 import { Transport } from "mediasoup-client/lib/Transport"
-import { useEffect, useRef, useState } from "react"
+import { createRef, useEffect, useRef, useState } from "react"
 import { io, Socket } from "socket.io-client"
 import { SERVER_BASE_URL } from "../config"
 import { ConsumeServerConsumeParams } from "../lib/types"
+import { useUserMedia } from "../lib/getUserMedia"
 
 function getRandomInt(max: number) {
    return Math.floor(Math.random() * max)
+}
+
+const VideoComponent = ({ mediaStream }: { mediaStream: MediaStream }) => {
+   const videoRef: any = useRef()
+   useEffect(() => {
+      videoRef.current.srcObject = mediaStream
+      videoRef.current.muted = true
+      return function cleanup() {
+         console.log("Cleaning mediaStream")
+         mediaStream.getTracks().forEach((track) => {
+            track.stop()
+         })
+      }
+   }, [mediaStream])
+   return (
+      <video
+         muted
+         loop
+         autoPlay
+         //  controls
+         playsInline
+         ref={videoRef}
+         style={{
+            width: "500px",
+            height: "500px",
+         }}
+      ></video>
+   )
 }
 
 export default function Home() {
    const videoRef: any = useRef()
    const socketRef: any = useRef()
    const deviceRef: any = useRef()
-   const [deviceConnected, setDeviceConnected] = useState(false)
    const randomId = getRandomInt(50).toString()
+   const [deviceConnected, setDeviceConnected] = useState(false)
+   const [id] = useState(() => getRandomInt(50).toString())
    const [userMeta, setUserMeta] = useState({
-      id: randomId,
-      name: randomId,
+      id: id,
+      name: id,
    })
    const [socketConnected, setSocketConnected] = useState(false)
    const [roomId, setRoomId] = useState("my-room")
@@ -42,6 +72,12 @@ export default function Home() {
    const audioProducer = useRef<Transport>()
    const producers = useRef<Array<Producer>>([])
    const consumers = useRef<Array<Consumer>>([])
+   const [producerContainers, setProducerContainers] = useState<
+      Array<{ mediaStream: MediaStream; producer: Producer; name: string }>
+   >([])
+   const [consumerContainers, setConsumerContainers] = useState<
+      Array<{ mediaStream: MediaStream; consumer: Consumer; name: string }>
+   >([])
    const dataProducers = useRef<Array<DataProducer>>([])
    const dataConsumers = useRef<Array<DataConsumer>>([])
    const canvasDataProducer = useRef<DataProducer>()
@@ -93,10 +129,10 @@ export default function Home() {
                },
                (response: any) => {
                   if (response.Status === "success") {
-                     const newProducerTransportId = response.id
+                     const newProducerId = response.id
                      // Tell the transport that parameters were transmitted and provide it with the
                      // server side producer's id.
-                     callback({ id: newProducerTransportId })
+                     callback({ id: newProducerId })
                   } else {
                      throw new Error("Failed Producer transport connect")
                   }
@@ -157,11 +193,88 @@ export default function Home() {
       })
       pt.observer.on("close", () => {
          console.log("PT observed transport close")
+         socketRef.current.emit("producerTransportClosed", {
+            userMeta,
+            roomId,
+            producerTransportId: pt.id,
+         })
          //  producers.current.forEach((p) => p.close())
          //  producers.current = []
          //  dataProducers.current.forEach((dp) => dp.close())
          //  dataProducers.current = []
       })
+   }
+
+   const createProducer = async (mediaConstraints: MediaStreamConstraints) => {
+      try {
+         const removeProducer = (producerId: string) => {
+            producers.current = producers.current.filter(
+               (p) => p.id !== producerId,
+            )
+            setProducerContainers(
+               producerContainers.filter((p) => p.producer.id !== producerId),
+            )
+         }
+         // const handleProducerClosed = (producerId: string) => {
+         //    socketRef.current.emit("producerClosed", {
+         //       userMeta,
+         //       roomId,
+         //       producerId,
+         //    })
+         //    removeProducer(producerId)
+         // }
+         if (!producerTransport || !producerTransport.current) {
+            console.log(
+               "calling requestCreateWebRtcTransport again for producer transport",
+            )
+            await requestCreateWebRtcTransport(
+               socketRef.current,
+               deviceRef.current,
+               "producer",
+            )
+            // throw new Error("No producer transport added")
+         }
+         const stream: MediaStream = await createMediaStream(mediaConstraints)
+         // const mediaRef = useRef()
+         // if (stream && mediaRef.current && !mediaRef.current.srcObject) {
+         //    mediaRef.current.srcObject = stream
+         //    mediaRef.current.muted = true
+         // }
+         // videoRef.current.srcObject = stream
+         // videoRef.current.muted = true
+         const track = stream.getVideoTracks()[0]
+         //  console.log(track)
+         const producer = await producerTransport.current!.produce({
+            track,
+         })
+         producer.on("trackended", () => {
+            //Emitted when the audio/video track being transmitted is externally stopped
+            // console.log("trackended")
+            producer.pause()
+         })
+
+         //producer will close automatically since transport closed
+         producer.on("transportclose", () => {
+            console.log("Producer transport closed")
+            removeProducer(producer.id)
+            // handleProducerClosed(producer.id)
+            // producer.close()
+         })
+
+         producer.on("close", () => {
+            console.log("Producer has closed")
+            // handleProducerClosed(producer.id)
+         })
+         producers.current.push(producer)
+         const newProducerContainer = {
+            mediaStream: stream,
+            producer,
+            name: "",
+         }
+         setProducerContainers([...producerContainers, newProducerContainer])
+      } catch (err) {
+         console.error(err)
+      }
    }
 
    const monitorConsumerTransport = () => {
@@ -222,22 +335,6 @@ export default function Home() {
       })
    }
 
-   const createMediaConsumerStream = async (
-      track: MediaStreamTrack,
-   ): Promise<MediaStream> => {
-      const newStream = new MediaStream([track])
-      return newStream
-   }
-
-   const createDataProducer = async () => {
-      if (producerTransport && producerTransport.current) {
-         const newDataProducer = await producerTransport.current.produceData()
-         canvasDataProducer.current = newDataProducer
-
-         dataProducers.current.push(newDataProducer)
-      }
-   }
-
    const createConsumer = async ({ producerId }: { producerId: string }) => {
       if (
          !consumerTransport ||
@@ -245,13 +342,32 @@ export default function Home() {
          !deviceRef ||
          !deviceRef.current
       ) {
+         console.log("Create consumer is requesting web rtc transport")
+         await requestCreateWebRtcTransport(
+            socketRef.current,
+            deviceRef.current,
+            "consumer",
+         )
          throw new Error("Invalid consumer transport or device")
       }
       const { rtpCapabilities } = deviceRef.current
-      const handleConsumerClosed = (consumerId: string) => {
+
+      const removeConsumer = (consumerId: string) => {
          consumers.current = consumers.current.filter(
             (c) => c.id !== consumerId,
          )
+         setConsumerContainers(
+            consumerContainers.filter((c) => c.consumer.id !== consumerId),
+         )
+      }
+      const handleConsumerClosed = (consumerId: string) => {
+         console.log("handleConsumerClosed ran")
+         socketRef.current.emit("consumerClosed", {
+            userMeta,
+            roomId,
+            consumerId,
+         })
+         removeConsumer(consumerId)
       }
       await socketRef.current.emit(
          "addConsumerTransport",
@@ -286,21 +402,54 @@ export default function Home() {
                rtpParameters,
                appData,
             })
+            // console.log("consumer created", consumer.id)
             consumer.on("trackended", () => {})
+            //consumer will close automatically, since transport closed
             consumer.on("transportclose", () => {
                console.log("Consumer transport closed")
-               handleConsumerClosed(consumer.id)
-               consumer.close()
+               // handleConsumerClosed(consumer.id)
+               removeConsumer(consumer.id)
+               // consumer.close()
             })
             consumer.on("close", () => {
-               handleConsumerClosed(consumer.id)
+               //  handleConsumerClosed(consumer.id)
             })
             const { track }: { track: MediaStreamTrack } = consumer
             const stream: MediaStream = await createMediaConsumerStream(track)
-            remoteVideoRef.current.srcObject = stream
+            // const mediaRef = createRef()
+            // mediaRef.current.srcObject = stream
+            // remoteVideoRef.current.srcObject = stream
             consumers.current.push(consumer)
+            const newConsumerContainer = {
+               mediaStream: stream,
+               consumer,
+               name: "",
+            }
+            setConsumerContainers([...consumerContainers, newConsumerContainer])
          },
       )
+   }
+
+   const createMediaConsumerStream = async (
+      track: MediaStreamTrack,
+   ): Promise<MediaStream> => {
+      const newStream = new MediaStream([track])
+      return newStream
+   }
+
+   const createDataProducer = async () => {
+      if (!producerTransport || !producerTransport.current) {
+         await requestCreateWebRtcTransport(
+            socketRef.current,
+            deviceRef.current,
+            "producer",
+         )
+      } else {
+         const newDataProducer = await producerTransport.current!.produceData()
+         canvasDataProducer.current = newDataProducer
+
+         dataProducers.current.push(newDataProducer)
+      }
    }
 
    const createDataConsumer = async ({
@@ -309,14 +458,19 @@ export default function Home() {
       dataProducerId: string
    }) => {
       if (!consumerTransport || !consumerTransport.current) {
-         throw new Error("Invalid consumer transport")
+         await requestCreateWebRtcTransport(
+            socketRef.current,
+            deviceRef.current,
+            "consumer",
+         )
+         //  throw new Error("Invalid consumer transport")
       }
       await socketRef.current.emit(
          "addDataConsumer",
          {
             userMeta,
             roomId,
-            transportId: consumerTransport.current.id,
+            transportId: consumerTransport.current!.id,
             dataProducerId,
          },
          async (response: any) => {
@@ -365,14 +519,15 @@ export default function Home() {
 
    const initConsumeMedia = async ({
       peerId,
-      producerTransportId,
+      producerId,
    }: {
       peerId: string
-      producerTransportId: string
+      producerId: string
    }) => {
       try {
-         await createConsumer({ producerId: producerTransportId })
+         await createConsumer({ producerId })
       } catch (err) {
+         console.error("Failed to consume media from producer")
          //Show failed to consume media from new producer message
          console.error(err)
       }
@@ -383,52 +538,11 @@ export default function Home() {
    ): Promise<MediaStream> => {
       return navigator.mediaDevices.getUserMedia(mediaConstraints)
    }
-
-   const initProduceMedia = async (
-      mediaConstraints: MediaStreamConstraints,
-   ) => {
-      const handleCloseProducer = (producerId: string) => {
-         socketRef.current.emit("producerClosed", {
-            userMeta,
-            roomId,
-            producerId,
-         })
-         producers.current = producers.current.filter(
-            (p) => p.id !== producerId,
-         )
-      }
-      try {
-         if (!producerTransport || !producerTransport.current) {
-            throw new Error("No producer transport added")
-         }
-         const stream: MediaStream = await createMediaStream(mediaConstraints)
-         videoRef.current.srcObject = stream
-         videoRef.current.muted = true
-         const track = stream.getVideoTracks()[0]
-         //  console.log(track)
-         const producer = await producerTransport.current!.produce({
-            track,
-         })
-         producer.on("trackended", () => {
-            // console.log("trackended")
-            // producer.pause()
-         })
-
-         producer.on("transportclose", () => {
-            console.log("Producer transport closed")
-            handleCloseProducer(producer.id)
-            producer.close()
-         })
-
-         producer.on("close", () => {
-            console.log("Producer has closed")
-            handleCloseProducer(producer.id)
-         })
-         producers.current.push(producer)
-      } catch (err) {
-         console.error(err)
-      }
-   }
+   // const createMediaStream = async (
+   //    mediaConstraints: MediaStreamConstraints,
+   // ): Promise<MediaStream> => {
+   //    return useUserMedia(mediaConstraints)
+   // }
 
    const checkDeviceProduceCapability = (kind: "audio" | "video"): boolean => {
       if (!deviceRef.current || !deviceRef.current.canProduce(kind)) {
@@ -449,36 +563,37 @@ export default function Home() {
       device: Device,
       transportType: "producer" | "consumer",
    ) => {
-      socket.emit(
-         "requestCreateWebRtcTransport",
-         {
-            roomId,
-            userMeta,
-         },
-         async (response: any) => {
-            if (response.Status === "success") {
-               const { transportParams } = response
-               if (transportType === "producer") {
-                  //Create new transport for sending media to server. At this point a mediasoup server has already created an identical transport with the same transport param
-                  const newProducerTransport: Transport =
-                     device.createSendTransport(transportParams)
-                  producerTransport.current = newProducerTransport
-                  monitorProducerTransport()
-                  //  await createDataProducer()
+      return new Promise((resolve, reject) => {
+         socket.emit(
+            "requestCreateWebRtcTransport",
+            {
+               roomId,
+               userMeta,
+            },
+            async (response: any) => {
+               if (response.Status === "success") {
+                  const { transportParams } = response
+                  if (transportType === "producer") {
+                     //Create new transport for sending media to server. At this point a mediasoup server has already created an identical transport with the same transport param
+                     const newProducerTransport: Transport =
+                        device.createSendTransport(transportParams)
+                     producerTransport.current = newProducerTransport
+                     monitorProducerTransport()
+                     //  await createDataProducer()
+                  } else {
+                     //Create new transport for receiving media from server. At this point a mediasoup server has already created an identical transport with the same transport params
+                     const newConsumerTransport: Transport =
+                        device.createRecvTransport(transportParams)
+                     consumerTransport.current = newConsumerTransport
+                     monitorConsumerTransport()
+                  }
+                  resolve({})
                } else {
-                  //Create new transport for receiving media from server. At this point a mediasoup server has already created an identical transport with the same transport params
-                  const newConsumerTransport: Transport =
-                     device.createRecvTransport(transportParams)
-                  consumerTransport.current = newConsumerTransport
-                  monitorConsumerTransport()
+                  reject("Unable to create transport for " + transportType)
                }
-            } else {
-               throw new Error(
-                  "Unable to create transport for " + transportType,
-               )
-            }
-         },
-      )
+            },
+         )
+      })
    }
 
    //Create device and initialize it.
@@ -536,18 +651,18 @@ export default function Home() {
          socket.on("newProducer", (msg: any) => {
             const {
                peerId,
-               producerTransportId,
-            }: { peerId: string; producerTransportId: string } = msg
+               producerId,
+            }: { peerId: string; producerId: string } = msg
             //since room broadcasts new producers to everyone, ignore this request for self join, sanity check
             if (userMeta.id !== peerId) {
                console.log("Client received broadcast message for new producer")
-               initConsumeMedia({ peerId, producerTransportId })
+               initConsumeMedia({ peerId, producerId })
             }
          })
-         socket.on("removeConsumer", (msg: any) => {
+         socket.on("closeConsumer", (msg: any) => {
             const { id }: { id: string } = msg
             console.log(
-               `Client ${userMeta.name} received remove consumer request ${id}`,
+               `Client ${userMeta.name} received close consumer request ${id}`,
             )
             closeConsumer(id)
          })
@@ -566,6 +681,15 @@ export default function Home() {
          })
       })
    }
+   // const handleConsumerClosed = (consumerId: string) => {
+   //    console.log("handleConsumerClosed ran")
+   //    socketRef.current.emit("consumerClosed", {
+   //       userMeta,
+   //       roomId,
+   //       consumerId,
+   //    })
+   //    consumers.current = consumers.current.filter((c) => c.id !== consumerId)
+   // }
    const closeConsumer = (id: string) => {
       const consumerToClose = consumers.current.filter((c) => c.id === id)[0]
       console.log(
@@ -581,10 +705,14 @@ export default function Home() {
    }
 
    const closeProducerTransport = () => {
-      producerTransport.current.close()
+      if (producerTransport && producerTransport.current) {
+         producerTransport.current.close()
+         producerTransport.current = undefined
+      }
    }
    const closeConsumerTransport = () => {
       consumerTransport.current.close()
+      consumerTransport.current = undefined
    }
 
    const sendData = async ({
@@ -652,7 +780,7 @@ export default function Home() {
                <button
                   onClick={async () => {
                      if (checkDeviceProduceCapability("video")) {
-                        await initProduceMedia({
+                        await createProducer({
                            video: true,
                         })
                      }
@@ -742,10 +870,40 @@ export default function Home() {
                   Disconnect Consumer Transport
                </button>
             </div>
+            <div>
+               <button
+                  onClick={() => {
+                     socketRef.current.emit("debug", { roomId, userMeta })
+                  }}
+               >
+                  Debug
+               </button>
+            </div>
             <div>Producers</div>
             <div>{JSON.stringify(producers.current.map((p) => p.id))}</div>
             <div>Consumers</div>
             <div>{JSON.stringify(consumers.current.map((p) => p.id))}</div>
+            <div>Producers2</div>
+            <div>
+               {JSON.stringify(producerContainers.map((p) => p.producer.id))}
+               <div>
+                  {producerContainers.map((p) => (
+                     <div key={p.producer.id}>
+                        <VideoComponent mediaStream={p.mediaStream} />
+                        <p>{p.producer.id}</p>
+                     </div>
+                  ))}
+               </div>
+            </div>
+            <div>Consumers3</div>
+            <div>
+               {consumerContainers.map((c) => (
+                  <div key={c.consumer.id}>
+                     <VideoComponent mediaStream={c.mediaStream} />
+                     <p>{c.consumer.id}</p>
+                  </div>
+               ))}
+            </div>
          </div>
       </main>
    )

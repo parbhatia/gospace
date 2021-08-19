@@ -9,6 +9,7 @@ import config from "./config/mediasoup"
 // )
 const uniqueRoomIdGenerator = () => "my-room"
 
+//Responsible for delegating rooms to workers and creating new rooms based on worker availability
 class RoomFactory {
    private roomToWorker: Map<string, number>
    private rooms: Map<String, Room>

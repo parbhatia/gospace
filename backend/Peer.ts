@@ -16,6 +16,7 @@ import {
 import { Socket } from "socket.io"
 
 import mediasoupConfig from "./config/mediasoup"
+import Room from "./Room"
 import {
    WebRtcTransportParams,
    UserMeta,
@@ -27,6 +28,7 @@ interface WebRtcTransportConstuctParams {
    router: Router
    socket: Socket
    roomId: string
+   room: Room
 }
 
 // A Peer associates a set of {transports, producers, consumers, websocket connection, metadata} of a client, inside a Room
@@ -34,16 +36,11 @@ class Peer {
    private userMeta: UserMeta
    private router: Router
    private roomId: string
+   private room: Room
    private socket: Socket
-   // private transportParams: {
-   //    id: String
-   //    iceParameters: IceParameters
-   //    iceCandidates: Array<IceCandidate>
-   //    dtlsParameters: DtlsParameters
-   // }
    private transports: Map<string, Transport>
-   private producerTransports: Map<string, Producer>
-   private consumerTransports: Map<string, Consumer>
+   private producers: Map<string, Producer>
+   private consumers: Map<string, Consumer>
    private dataProducers: Map<string, DataProducer>
    private dataConsumers: Map<string, DataConsumer>
 
@@ -52,19 +49,21 @@ class Peer {
       router,
       socket,
       roomId,
+      room,
    }: WebRtcTransportConstuctParams) {
       this.userMeta = userMeta
       this.router = router
       this.socket = socket
       this.roomId = roomId
+      this.room = room
       this.transports = new Map()
-      this.producerTransports = new Map()
-      this.consumerTransports = new Map()
+      this.producers = new Map()
+      this.consumers = new Map()
       this.dataProducers = new Map()
       this.dataConsumers = new Map()
    }
    // This is negotiated/created using a Router, it represents a network path to receive/send media.
-   // *Note: Each Transport in mediasoup-client must be associated to a single WebRtcTransport in mediasoup server. I expected that this is clear in the doc: However, if you understood that two transports in the client can use the same transport in the server, then something is wrong in the doc.
+   // *Note: Each Transport in mediasoup-client must be associated to a single WebRtcTransport in mediasoup server
    createWebRtcTransport = async (): Promise<WebRtcTransportParams> => {
       const { listenIps, maxIncomingBitrate, initialAvailableOutgoingBitrate } =
          mediasoupConfig.mediasoup.webRtcTransport
@@ -89,11 +88,12 @@ class Peer {
          // RTCPeerConnection is probably closed
          if (dtlsState === "closed") {
             transport.close()
+            this.removeTransport({ id: transport.id })
          }
       })
       transport.on("routerclose", () => {
-         this.removeTransport({ id: transport.id })
          transport.close()
+         this.removeTransport({ id: transport.id })
       })
       transport.on("close", () => {
          console.log(
@@ -101,6 +101,12 @@ class Peer {
          )
          this.removeTransport({ id: transport.id })
       })
+      transport.observer.on("close", () => {
+         console.log(
+            `Peer ${this.userMeta.name}'s transport with ${transport.id} has closed IN OBSERVER`,
+         )
+      })
+      // setTimeout(() => transport.close(), 10000)
       this.transports.set(transport.id, transport)
       return transportParams
    }
@@ -124,7 +130,7 @@ class Peer {
       if (this.transportExists({ id })) {
          const transport: Transport = this.getTransport({ id })!
          console.log(
-            `Peer ${this.userMeta.name} has connected transportwith id ${id}`,
+            `Peer ${this.userMeta.name} has connected transport with id ${id}`,
          )
          await transport.connect({ dtlsParameters })
       }
@@ -132,7 +138,18 @@ class Peer {
    removeTransport = ({ id }: { id: string }) => {
       this.transports.delete(id)
    }
-   removeConsumerTransport = ({
+   removeConsumerOfProducer = ({ producerId }: { producerId: string }) => {
+      const consumer: Consumer | null = this.getConsumerOfProducer({
+         producerId,
+      })
+      if (consumer) {
+         console.log(
+            `Peer ${this.userMeta.name}'s consumer of producer is being removed`,
+         )
+         this.removeConsumer({ id: consumer.id, notifyClient: true })
+      }
+   }
+   removeConsumer = ({
       id,
       notifyClient = false,
    }: {
@@ -143,14 +160,14 @@ class Peer {
          `Peer ${this.userMeta.name} needs to remove consumer of id ${id}`,
       )
       if (notifyClient) {
-         this.socket.emit("removeConsumer", {
+         this.socket.emit("closeConsumer", {
             id,
          })
       }
-      this.consumerTransports.delete(id)
+      this.consumers.delete(id)
    }
-   removeProducerTransport = ({ id }: { id: string }) => {
-      this.producerTransports.delete(id)
+   removeProducer = ({ id }: { id: string }) => {
+      this.producers.delete(id)
    }
    removeDataProducer = ({ id }: { id: string }) => {
       this.dataProducers.delete(id)
@@ -158,37 +175,55 @@ class Peer {
    removeDataConsumer = ({ id }: { id: string }) => {
       this.dataConsumers.delete(id)
    }
+   // handleStopConsuming
 
    ////////////////close transports/////////////////
-   handleTransportClosed = ({ id }: { id: string }) => {
-      this.getTransport({ id })?.close()
-      this.removeTransport({ id })
+   handleProducerTransportClosed = ({
+      producerTransportId,
+   }: {
+      producerTransportId: string
+   }) => {
+      this.getTransport({ id: producerTransportId })?.close()
    }
-   handleConsumerTransportClosed = ({ id }: { id: string }) => {
-      this.getConsumerTransport({ id })?.close()
-      this.removeConsumerTransport({ id, notifyClient: false })
+   //Client sends message for producer closed, close producer here in server
+   handleProducerClosed = ({ producerId }: { producerId: string }) => {
+      this.getProducer({ id: producerId })?.close()
+      this.removeProducer({ id: producerId })
+      //tell everyone in the room that consumer has closed, on the server side, so they should stop listening to this consumer
+      // this.room.removeConsumers({ userMeta: this.userMeta, producerId })
    }
-   handleProducerTransportClosed = ({ id }: { id: string }) => {
-      this.getProducerTransport({ id })?.close()
-      this.removeProducerTransport({ id })
-   }
-   handleDataProducerClosed = ({ id }: { id: string }) => {
-      this.getDataProducer({ id })?.close()
-      this.removeDataProducer({ id })
-   }
-   handleDataConsumerClosed = ({ id }: { id: string }) => {
-      this.getDataConsumer({ id })?.close()
-      this.removeDataConsumer({ id })
+   //Client sends message for consumer closed, close consumer here in server
+   handleConsumerClosed = ({ consumerId }: { consumerId: string }) => {
+      this.getConsumer({ id: consumerId })?.close()
+      this.removeConsumer({ id: consumerId, notifyClient: false })
    }
    ////////////////close transports/////////////////
 
    getDataProducer = ({ id }: { id: string }) => this.dataProducers.get(id)
    getDataConsumer = ({ id }: { id: string }) => this.dataConsumers.get(id)
-   getProducerTransport = ({ id }: { id: string }) =>
-      this.producerTransports.get(id)
-   getConsumerTransport = ({ id }: { id: string }) =>
-      this.consumerTransports.get(id)
-   addProducerTransport = async ({
+   getProducer = ({ id }: { id: string }) => this.producers.get(id)
+   getConsumer = ({ id }: { id: string }) => this.consumers.get(id)
+   getConsumerOfProducer = ({
+      producerId,
+   }: {
+      producerId: string
+   }): Consumer | null => {
+      let consumerIdFound = ""
+      this.consumers.forEach((consumer, consumerId) => {
+         if (consumer.producerId === producerId) {
+            consumerIdFound = consumerId
+            console.log(
+               `Peer ${this.userMeta.name}'s consumer of producer is found ${consumerId}`,
+            )
+         }
+      })
+      if (consumerIdFound !== "") {
+         return this.consumers.get(consumerIdFound)!
+      } else {
+         return null
+      }
+   }
+   addProducer = async ({
       id,
       rtpParameters,
       kind,
@@ -197,25 +232,105 @@ class Peer {
       rtpParameters: RtpParameters
       kind: MediaKind
    }): Promise<Producer | null> => {
-      if (!this.getProducerTransport({ id }) && this.transportExists({ id })) {
+      if (!this.getProducer({ id }) && this.transportExists({ id })) {
          const transportToReference = this.getTransport({ id })
-         const newProducerTransport: Producer =
-            await transportToReference!.produce({ kind, rtpParameters })
+         const newProducer: Producer = await transportToReference!.produce({
+            kind,
+            rtpParameters,
+         })
          // Note: we've created a new producer transport using given webRtc transport
          // This new transport has a different id
-         const newId = newProducerTransport.id
-         newProducerTransport.on("transportclose", () => {
+         const newId = newProducer.id
+         // producer will close automatically since transport closed
+         newProducer.on("transportclose", () => {
             console.log(
-               `Peer ${this.userMeta.name}'s producer transport with is closing with ${id}`,
+               `Peer ${this.userMeta.name}'s producer with id ${id} is closing`,
             )
-            newProducerTransport.close()
-            this.removeProducerTransport({ id: newProducerTransport.id })
+            this.removeProducer({ id: newProducer.id })
          })
-         this.producerTransports.set(newId, newProducerTransport)
+         this.producers.set(newId, newProducer)
          //notify peers of my producing
-         this.broadcastNewProducer({ producerTransportId: newId })
-         return newProducerTransport
+         this.broadcastNewProducer({ producerId: newId })
+         return newProducer
       } else {
+         return null
+      }
+   }
+
+   addConsumer = async ({
+      id,
+      producerId,
+      rtpCapabilities,
+      appData,
+      paused,
+   }: {
+      id: string
+      producerId: string
+      rtpCapabilities: RtpCapabilities
+      appData: any
+      paused: boolean | undefined
+   }): Promise<ConsumeServerConsumeParams | null> => {
+      if (
+         this.router.canConsume({ producerId, rtpCapabilities }) &&
+         this.transportExists({ id })
+      ) {
+         console.log(
+            `Peer ${this.userMeta.name}'s router is able to consume producer with id ${producerId}`,
+         )
+         // Consume the producer by calling transport.consume({ producerId, rtpCapabilities }).
+         const transportToReference = this.getTransport({ id })
+
+         const newConsumer = await transportToReference!.consume({
+            producerId,
+            rtpCapabilities,
+            paused,
+            appData,
+         })
+         //consumer will close automatically since transport closed
+         newConsumer.on("transportclose", () => {
+            console.log(
+               `Peer ${this.userMeta.name}'s received a transport closed notification with id ${producerId}`,
+            )
+            this.removeConsumer({
+               id: newConsumer.id,
+               notifyClient: true,
+            })
+         })
+         newConsumer.on("producerclose", () => {
+            console.log(
+               `Peer ${this.userMeta.name}'s received a producer closed notification with id ${producerId}`,
+            )
+            this.removeConsumer({
+               id: newConsumer.id,
+               notifyClient: true,
+            })
+         })
+         newConsumer.on("producerpause", () => {
+            console.log(
+               `Peer ${this.userMeta.name}'s received a producer paused notification with id ${producerId}`,
+            )
+            newConsumer.pause()
+         })
+         newConsumer.on("producerresume", () => {
+            console.log(
+               `Peer ${this.userMeta.name}'s received a producer resume notification with id ${producerId}`,
+            )
+            newConsumer.resume()
+         })
+
+         //add transport to consumers collection
+         this.consumers.set(newConsumer.id, newConsumer)
+         return {
+            id: newConsumer.id,
+            kind: newConsumer.kind,
+            rtpParameters: newConsumer.rtpParameters,
+            producerId,
+            appData: {},
+         }
+      } else {
+         console.log(
+            `Peer ${this.userMeta.name}'s router is unable to consume producer with id ${producerId}`,
+         )
          return null
       }
    }
@@ -230,7 +345,7 @@ class Peer {
       label: string
       protocol: string
    }): Promise<DataProducer | null> => {
-      if (!this.getProducerTransport({ id }) && this.transportExists({ id })) {
+      if (!this.getProducer({ id }) && this.transportExists({ id })) {
          const transportToReference = this.getTransport({ id })
          const newDataProducer: DataProducer =
             await transportToReference!.produceData({
@@ -250,11 +365,7 @@ class Peer {
          return null
       }
    }
-   broadcastNewProducer = ({
-      producerTransportId,
-   }: {
-      producerTransportId: string
-   }) => {
+   broadcastNewProducer = ({ producerId }: { producerId: string }) => {
       // Notify all OTHER peers in the room that new peer has been added a producer, and peers should start consuming
       // calling .to() with the original socket will only emit to everyone in the room, but original socket client
       console.log(
@@ -262,7 +373,7 @@ class Peer {
       )
       this.socket.to(this.roomId).emit("newProducer", {
          peerId: this.userMeta.name,
-         producerTransportId,
+         producerId,
       })
    }
    broadcastNewDataProducer = ({
@@ -317,85 +428,29 @@ class Peer {
          return null
       }
    }
-   addConsumerTransport = async ({
-      id,
-      producerId,
-      rtpCapabilities,
-      appData,
-      paused,
-   }: {
-      id: string
-      producerId: string
-      rtpCapabilities: RtpCapabilities
-      appData: any
-      paused: boolean | undefined
-   }): Promise<ConsumeServerConsumeParams | null> => {
-      if (
-         this.router.canConsume({ producerId, rtpCapabilities }) &&
-         this.transportExists({ id })
-      ) {
-         console.log(
-            `Peer ${this.userMeta.name}'s router is able to consume producer with id ${producerId}`,
-         )
-         // Consume the producer by calling transport.consume({ producerId, rtpCapabilities }).
-         const transportToReference = this.getTransport({ id })
 
-         const newConsumerTransport = await transportToReference!.consume({
-            producerId,
-            rtpCapabilities,
-            paused,
-            appData,
-         })
-         newConsumerTransport.on("transportclose", () => {
-            console.log(
-               `Peer ${this.userMeta.name}'s received a transport closed notification with id ${producerId}`,
-            )
-            newConsumerTransport.close()
-            this.removeConsumerTransport({
-               id: newConsumerTransport.id,
-               notifyClient: true,
-            })
-         })
-         newConsumerTransport.on("producerclose", () => {
-            console.log(
-               `Peer ${this.userMeta.name}'s received a producer closed notification with id ${producerId}`,
-            )
-            newConsumerTransport.close()
-            this.removeConsumerTransport({
-               id: newConsumerTransport.id,
-               notifyClient: true,
-            })
-         })
-         //add transport to consumers collection
-         this.consumerTransports.set(id, newConsumerTransport)
-         return {
-            id: newConsumerTransport.id,
-            kind: newConsumerTransport.kind,
-            rtpParameters: newConsumerTransport.rtpParameters,
-            producerId,
-            appData: {},
-         }
-      } else {
-         console.log(
-            `Peer ${this.userMeta.name}'s router is unable to consume producer with id ${producerId}`,
-         )
-         return null
-      }
-   }
    closeTransports = async () => {
       console.log(`Peer ${this.userMeta.name} is closing all its transports`)
       this.transports.forEach((t) => t.close())
-      this.producerTransports.forEach((t) => t.close())
-      this.consumerTransports.forEach((t) => t.close())
-      this.dataProducers.forEach((t) => t.close())
-      this.dataConsumers.forEach((t) => t.close())
+      //Producers and Consumers will close and delete themselves if any associated transport closes
+      /////
+      // this.producers.forEach((t) => t.close())
+      // this.consumers.forEach((t) => t.close())
+      // this.dataProducers.forEach((t) => t.close())
+      // this.dataConsumers.forEach((t) => t.close())
+   }
+   debug = async () => {
+      console.log("")
+      console.log("Transports:")
+      this.transports.forEach((t, tId) => console.log(tId))
+      console.log("")
+      console.log("Producers")
+      this.producers.forEach((t, tId) => console.log(tId))
+      console.log("")
+      console.log("Consumers")
+      this.consumers.forEach((t, tId) => console.log(tId))
+      console.log("")
    }
 }
-
-// resumeConsumer = async ({ id }: { id: string }) => {
-//    if (this.getConsumerTransport({ id })) {
-//       await this.getConsumerTransport({ id })!.resume()
-//    }
-// }
 
 export default Peer

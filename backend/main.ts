@@ -159,7 +159,7 @@ const main = async () => {
                const newProducer: Producer | null = await roomFactory
                   .getRoom(roomId)!
                   .getPeer(userMeta)
-                  .addProducerTransport({
+                  .addProducer({
                      id: transportId,
                      rtpParameters,
                      kind,
@@ -247,14 +247,14 @@ const main = async () => {
             paused: boolean | undefined
          } = msg
          console.log(
-            `Peer ${userMeta.name} requests to add consumer transport with transportId ${transportId} and producerId ${producerId}`,
+            `Peer ${userMeta.name} requests to add consumer with transportId ${transportId} and producerId ${producerId}`,
          )
          try {
             if (roomFactory.roomExists(roomId)) {
                const room = roomFactory.getRoom(roomId)!
                const newConsumerParams = await room
                   .getPeer(userMeta)
-                  .addConsumerTransport({
+                  .addConsumer({
                      id: transportId,
                      producerId,
                      rtpCapabilities,
@@ -265,7 +265,7 @@ const main = async () => {
                   throw new Error("Unable to add consumer transport")
                }
                console.log(
-                  `New consumer transport added for Peer ${userMeta.name} with id ${newConsumerParams.id}`,
+                  `New consumer  added for Peer ${userMeta.name} with id ${newConsumerParams.id}`,
                )
                callback({ Status: "success", newConsumerParams })
             } else {
@@ -273,7 +273,7 @@ const main = async () => {
             }
          } catch (e) {
             console.log(
-               `Peer ${userMeta.name} request to add consumer transport with transportId ${transportId} failed!`,
+               `Peer ${userMeta.name} request to add consumer  with transportId ${transportId} failed!`,
             )
             callback({ Status: "failure", Error: e })
          }
@@ -320,6 +320,27 @@ const main = async () => {
          }
       })
 
+      socket.on("producerTransportClosed", async (msg) => {
+         const {
+            roomId,
+            userMeta,
+            producerTransportId,
+         }: {
+            roomId: string
+            userMeta: UserMeta
+            producerTransportId: string
+         } = msg
+         console.log(`Peer ${userMeta.name}'s producer transport closed`)
+         if (roomFactory.roomExists(roomId)) {
+            const roomOfPeer = roomFactory.getRoom(roomId)!
+            await roomOfPeer
+               .getPeer(userMeta)
+               .handleProducerTransportClosed({ producerTransportId })
+         }
+         console.log(
+            `Peer ${userMeta.name}'s producer transport successfully removed`,
+         )
+      })
       socket.on("producerClosed", async (msg) => {
          const {
             roomId,
@@ -331,9 +352,40 @@ const main = async () => {
             const roomOfPeer = roomFactory.getRoom(roomId)!
             await roomOfPeer
                .getPeer(userMeta)
-               .handleProducerTransportClosed({ id: producerId })
+               .handleProducerClosed({ producerId })
          }
-         console.log("Peer's producer successfully removed", userMeta.name)
+         console.log(`Peer ${userMeta.name}'s producer successfully removed`)
+      })
+      socket.on("consumerClosed", async (msg) => {
+         const {
+            roomId,
+            userMeta,
+            consumerId,
+         }: { roomId: string; userMeta: UserMeta; consumerId: string } = msg
+         console.log(`Peer ${userMeta.name}'s consumer closed`)
+         if (roomFactory.roomExists(roomId)) {
+            const roomOfPeer = roomFactory.getRoom(roomId)!
+            await roomOfPeer
+               .getPeer(userMeta)
+               .handleConsumerClosed({ consumerId })
+         }
+         console.log(`Peer ${userMeta.name}'s producer successfully removed`)
+      })
+      socket.on("debug", async (msg) => {
+         const { roomId, userMeta }: { roomId: string; userMeta: UserMeta } =
+            msg
+         console.log(
+            "------------------------------------------------------------",
+         )
+         console.log(`Peer ${userMeta.name}'s debug start ---------------`)
+         if (roomFactory.roomExists(roomId)) {
+            const roomOfPeer = roomFactory.getRoom(roomId)!
+            await roomOfPeer.getPeer(userMeta).debug()
+         }
+         console.log(`Peer ${userMeta.name}'s debug end ---------------`)
+         console.log(
+            "------------------------------------------------------------",
+         )
       })
 
       socket.on("removePeer", async (msg) => {
