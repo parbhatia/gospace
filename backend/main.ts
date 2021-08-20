@@ -47,12 +47,12 @@ const main = async () => {
 
          const { roomId, userMeta }: { roomId: string; userMeta: UserMeta } =
             msg
-         console.log(`Peer ${userMeta.name} requests Router RTP capabilities`)
+         // console.log(`Peer ${userMeta.name} requests Router RTP capabilities`)
          let room: Room
          if (!roomFactory.roomExists(roomId)) {
-            console.log(`Room with id ${roomId} does not exist. Creating room`)
+            // console.log(`Room with id ${roomId} does not exist. Creating room`)
             room = await roomFactory.createNewRoom()
-            console.log(`Creating new room with id ${roomId}`)
+            console.log(`Created new room with id ${roomId}`)
          } else {
             room = roomFactory.getRoom(roomId)!
          }
@@ -73,9 +73,9 @@ const main = async () => {
       socket.on("requestCreateWebRtcTransport", async (msg, callback) => {
          const { roomId, userMeta }: { userMeta: UserMeta; roomId: string } =
             msg
-         console.log(
-            `Peer ${userMeta.name} requests WebRtc transport connection`,
-         )
+         // console.log(
+         //    `Peer ${userMeta.name} requests WebRtc transport connection`,
+         // )
          if (roomFactory.roomExists(roomId)) {
             const room = roomFactory.getRoom(roomId)!
             let peer
@@ -87,9 +87,9 @@ const main = async () => {
             const params: WebRtcTransportParams =
                await peer.createWebRtcTransport()
             //send created WebRtc transport's params to client, so client can use the params to create a Transport for communication
-            console.log(
-               `Peer ${userMeta.name} successfully received WebRtc transport connection`,
-            )
+            // console.log(
+            //    `Peer ${userMeta.name} successfully received WebRtc transport connection`,
+            // )
             callback({
                Status: "success",
                transportParams: params,
@@ -116,20 +116,20 @@ const main = async () => {
             transportId: string
             dtlsParameters: DtlsParameters
          } = msg
-         console.log(
-            `Peer ${userMeta.name} requests to connect transport with id ${transportId}`,
-         )
+         // console.log(
+         //    `Peer ${userMeta.name} requests to connect transport with id ${transportId}`,
+         // )
          if (roomFactory.roomExists(roomId)) {
             await roomFactory
                .getRoom(roomId)!
                .getPeer(userMeta)
                .connectTransport({ id: transportId, dtlsParameters })
-            console.log(
-               `Peer ${userMeta.name} transport connection successful with transport id ${transportId}`,
-            )
+            // console.log(
+            //    `Peer ${userMeta.name} transport connection successful with transport id ${transportId}`,
+            // )
             callback({ Status: "success" })
          } else {
-            console.log(
+            console.error(
                `Peer ${userMeta.name} transport connection failed with transport id ${transportId}`,
             )
             callback({ Status: "failure" })
@@ -167,16 +167,16 @@ const main = async () => {
                if (!newProducer) {
                   throw new Error("Invalid producer")
                }
-               console.log(
-                  `New producer transport added for Peer ${userMeta.name} with id ${newProducer.id}`,
-               )
+               // console.log(
+               //    `New producer transport added for Peer ${userMeta.name} with id ${newProducer.id}`,
+               // )
                callback({ Status: "success", id: newProducer.id })
             } else {
                console.log(`No room with ${roomId} exists`)
             }
          } catch (e) {
             callback({ Status: "failure", error: e })
-            console.log(
+            console.error(
                `Peer ${userMeta.name} request to add producer transport with transportId ${transportId} failed!`,
             )
          }
@@ -264,9 +264,9 @@ const main = async () => {
                if (!newConsumerParams) {
                   throw new Error("Unable to add consumer transport")
                }
-               console.log(
-                  `New consumer  added for Peer ${userMeta.name} with id ${newConsumerParams.id}`,
-               )
+               // console.log(
+               //    `New consumer  added for Peer ${userMeta.name} with id ${newConsumerParams.id}`,
+               // )
                callback({ Status: "success", newConsumerParams })
             } else {
                console.log(`No room with ${roomId} exists`)

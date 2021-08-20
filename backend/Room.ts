@@ -8,16 +8,19 @@ import WorkerFactory from "./WorkerFactory"
 interface RoomConstructParams {
    id: string
    router: Router
+   removeRoom: any
 }
 // A mediasoup Router can be thought of as a Room. It belongs to a single worker
 class Room {
    private id: string
    private router: Router
    private peers: Map<string, Peer>
-   constructor({ id, router }: RoomConstructParams) {
+   private removeRoom
+   constructor({ id, router, removeRoom }: RoomConstructParams) {
       this.id = id
       this.router = router
       this.peers = new Map()
+      this.removeRoom = removeRoom
    }
    monitorRouter = () => {
       this.router.on("workerclose", async () => {
@@ -67,10 +70,15 @@ class Room {
       })
    }
    removePeer = async (userMeta: UserMeta) => {
-      const peerToRemove = this.getPeer(userMeta)
-      await peerToRemove.closeTransports()
-      this.peers.delete(userMeta.id)
-      console.log(`Removing peer ${userMeta.name} from room`)
+      if (this.hasPeer(userMeta)) {
+         const peerToRemove = this.getPeer(userMeta)
+         await peerToRemove.closeTransports()
+         this.peers.delete(userMeta.id)
+         console.log(`Removing peer ${userMeta.name} from room`)
+         if (this.peers.size === 0) {
+            this.removeRoom(this.id)
+         }
+      }
    }
    removePeerWithSocket = async (socket: Socket) => {
       this.peers.forEach(async (p) => {

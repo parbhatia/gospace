@@ -25,6 +25,7 @@ class RoomFactory {
    removeRoom = async (roomId: string) => {
       if (this.roomExists(roomId)) {
          await this.getRoom(roomId)?.removeAllPeers()
+         console.log("Removing room", roomId)
          this.rooms.delete(roomId)
       }
    }
@@ -44,7 +45,11 @@ class RoomFactory {
          mediaCodecs: defaultMediaCodecs,
       })
       const newRoomId = uniqueRoomIdGenerator()
-      const newRoom = await new Room({ id: newRoomId, router })
+      const newRoom = await new Room({
+         id: newRoomId,
+         router,
+         removeRoom: this.removeRoom,
+      })
       router.on("workerclose", async () => {
          await this.removeRoom(newRoomId)
       })

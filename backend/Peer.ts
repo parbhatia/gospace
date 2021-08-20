@@ -129,9 +129,9 @@ class Peer {
    }) => {
       if (this.transportExists({ id })) {
          const transport: Transport = this.getTransport({ id })!
-         console.log(
-            `Peer ${this.userMeta.name} has connected transport with id ${id}`,
-         )
+         // console.log(
+         //    `Peer ${this.userMeta.name} has connected transport with id ${id}`,
+         // )
          await transport.connect({ dtlsParameters })
       }
    }
@@ -274,9 +274,9 @@ class Peer {
          this.router.canConsume({ producerId, rtpCapabilities }) &&
          this.transportExists({ id })
       ) {
-         console.log(
-            `Peer ${this.userMeta.name}'s router is able to consume producer with id ${producerId}`,
-         )
+         // console.log(
+         //    `Peer ${this.userMeta.name}'s router is able to consume producer with id ${producerId}`,
+         // )
          // Consume the producer by calling transport.consume({ producerId, rtpCapabilities }).
          const transportToReference = this.getTransport({ id })
 
@@ -289,7 +289,7 @@ class Peer {
          //consumer will close automatically since transport closed
          newConsumer.on("transportclose", () => {
             console.log(
-               `Peer ${this.userMeta.name}'s received a transport closed notification with id ${producerId}`,
+               `Peer ${this.userMeta.name} received a transport closed notification with id ${producerId}`,
             )
             this.removeConsumer({
                id: newConsumer.id,
@@ -298,7 +298,7 @@ class Peer {
          })
          newConsumer.on("producerclose", () => {
             console.log(
-               `Peer ${this.userMeta.name}'s received a producer closed notification with id ${producerId}`,
+               `Peer ${this.userMeta.name} received a producer closed notification with id ${producerId}`,
             )
             this.removeConsumer({
                id: newConsumer.id,
@@ -307,13 +307,13 @@ class Peer {
          })
          newConsumer.on("producerpause", () => {
             console.log(
-               `Peer ${this.userMeta.name}'s received a producer paused notification with id ${producerId}`,
+               `Peer ${this.userMeta.name} received a producer paused notification with id ${producerId}`,
             )
             newConsumer.pause()
          })
          newConsumer.on("producerresume", () => {
             console.log(
-               `Peer ${this.userMeta.name}'s received a producer resume notification with id ${producerId}`,
+               `Peer ${this.userMeta.name} received a producer resume notification with id ${producerId}`,
             )
             newConsumer.resume()
          })
@@ -368,11 +368,12 @@ class Peer {
    broadcastNewProducer = ({ producerId }: { producerId: string }) => {
       // Notify all OTHER peers in the room that new peer has been added a producer, and peers should start consuming
       // calling .to() with the original socket will only emit to everyone in the room, but original socket client
-      console.log(
-         `Peer ${this.userMeta.name} is broadcasting its arrival of new producer`,
-      )
+      // console.log(
+      //    `Peer ${this.userMeta.name} is broadcasting its arrival of new producer`,
+      // )
       this.socket.to(this.roomId).emit("newProducer", {
-         peerId: this.userMeta.name,
+         peerId: this.userMeta.id,
+         peerName: this.userMeta.name,
          producerId,
       })
    }
@@ -441,14 +442,23 @@ class Peer {
    }
    debug = async () => {
       console.log("")
-      console.log("Transports:")
-      this.transports.forEach((t, tId) => console.log(tId))
+      if (this.transports.size === 0) console.log("No Transports")
+      else {
+         console.log("Transports:")
+         this.transports.forEach((t, tId) => console.log(tId))
+      }
       console.log("")
-      console.log("Producers")
-      this.producers.forEach((t, tId) => console.log(tId))
+      if (this.producers.size === 0) console.log("No Producers")
+      else {
+         console.log("Producers")
+         this.producers.forEach((t, tId) => console.log(tId))
+      }
       console.log("")
-      console.log("Consumers")
-      this.consumers.forEach((t, tId) => console.log(tId))
+      if (this.consumers.size === 0) console.log("No Consumers")
+      else {
+         console.log("Consumers")
+         this.consumers.forEach((t, tId) => console.log(tId))
+      }
       console.log("")
    }
 }
