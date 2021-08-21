@@ -73,13 +73,13 @@ class Room {
          }
       })
    }
-   removePeer = async (userMeta: UserMeta) => {
+   removePeer = async (userMeta: UserMeta, removeEmptyRoom: boolean = true) => {
       if (this.hasPeer(userMeta)) {
          const peerToRemove = this.getPeer(userMeta)
          await peerToRemove.closeTransports()
          this.peers.delete(userMeta.id)
          console.log(`Removing peer ${userMeta.name} from room`)
-         if (this.peers.size === 0) {
+         if (this.peers.size === 0 && removeEmptyRoom) {
             this.removeRoom(this.id)
          }
       }

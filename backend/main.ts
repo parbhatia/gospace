@@ -35,12 +35,13 @@ const main = async () => {
 
    const roomFactory = await RoomFactory.init()
 
+   // TO DO: create a status interface, which always has a "Status:" : "failure" |"success, and any other keys
+
    io.on("connection", async (socket: Socket) => {
       // console.log("Socket connected! :D")
 
-      socket.on("requestRouterRTPCapabilities", async (msg) => {
+      socket.on("requestRouterRTPCapabilities", async (msg, callback) => {
          //Create a room on this request
-
          const { roomId, userMeta }: { roomId: string; userMeta: UserMeta } =
             msg
          // console.log(`Peer ${userMeta.name} requests Router RTP capabilities`)
@@ -52,7 +53,11 @@ const main = async () => {
          } else {
             room = roomFactory.getRoom(roomId)!
          }
-
+         if (room.hasPeer(userMeta)) {
+            //Peer exists, is probably attempting reconnection of transports
+            //remove peer from room, but don't delete room if empty
+            await room.removePeer(userMeta, false)
+         }
          //Join socket to new room
          socket.join(roomId)
 
@@ -62,8 +67,14 @@ const main = async () => {
             console.log(
                `Peer ${userMeta.name}'s request of Router RTP capabilities failed`,
             )
+            callback({ Status: "failure" })
+         } else {
+            callback({
+               Status: "success",
+               routerRtpCapabilities: routerRTPCapabilities,
+            })
          }
-         socket.emit("RTPCapabilitiesPayload", routerRTPCapabilities)
+         // socket.emit("RTPCapabilitiesPayload", routerRTPCapabilities)
       })
 
       socket.on("requestCreateWebRtcTransport", async (msg, callback) => {
@@ -97,21 +108,6 @@ const main = async () => {
                Status: "success",
                transportParams: params,
             })
-            // if (transportType === "consumer") {
-            //    console.log("Telling peers to broadcast to peer " + userMeta.id)
-            //    // existing peers in room need to broadcast to peer
-            //    roomFactory
-            //       .getRoom(roomId)!
-            //       .getPeers()
-            //       .forEach((p) => {
-            //          if (p.getUserMeta().id !== userMeta.id) {
-            //             p.broadcastProducersToPeer({
-            //                socketId: socket.id,
-            //                userMeta,
-            //             })
-            //          }
-            //       })
-            // }
          } else {
             callback({
                Status: "failure",
@@ -148,21 +144,6 @@ const main = async () => {
                `Peer ${userMeta.name} ${transportType} transport connection successful with transport id ${transportId}`,
             )
             callback({ Status: "success" })
-            // if (transportType === "consumer") {
-            //    console.log("Telling peers to broadcast to peer " + userMeta.id)
-            //    // existing peers in room need to broadcast to peer
-            //    roomFactory
-            //       .getRoom(roomId)!
-            //       .getPeers()
-            //       .forEach((p) => {
-            //          if (p.getUserMeta().id !== userMeta.id) {
-            //             p.broadcastProducersToPeer({
-            //                socketId: socket.id,
-            //                userMeta,
-            //             })
-            //          }
-            //       })
-            // }
          } else {
             console.error(
                `Peer ${userMeta.name} transport connection failed with transport id ${transportId}`,

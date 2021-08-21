@@ -6,3 +6,8 @@ export interface ConsumeServerConsumeParams {
    producerId: string
    appData: any
 }
+
+export interface UserMeta {
+   id: string
+   name: string
+}
