@@ -40,10 +40,11 @@ const useProducerTransport = ({
       if (producerTransport) {
          producerTransport.close()
          setProducerTransport(null)
-         socket.emit("producerTransportClosed", {
+         socket.emit("transportClosed", {
             userMeta,
             roomId,
-            producerTransportId: producerTransport.id,
+            transportId: producerTransport.id,
+            type: "producer",
          })
       }
    }
@@ -156,12 +157,8 @@ const useProducerTransport = ({
             }
          })
          pt.observer.on("close", () => {
-            console.log("Producer Transport observed transport close")
-            // socket.emit("producerTransportClosed", {
-            //    userMeta,
-            //    roomId,
-            //    producerTransportId: pt.id,
-            // })
+            console.log("Producer Transport observed transport close", pt.id)
+            closeProducerTransport()
          })
       }
    }, [producerTransport, socket])

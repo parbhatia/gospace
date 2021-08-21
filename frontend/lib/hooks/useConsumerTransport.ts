@@ -92,7 +92,8 @@ const useConsumerTransport = ({
             }
          })
          ct.observer.on("close", () => {
-            console.log("Consumer Transport observed transport close")
+            closeConsumerTransport()
+            console.log("Consumer Transport observed transport close", ct.id)
          })
       }
    }, [consumerTransport, socket])
@@ -101,6 +102,12 @@ const useConsumerTransport = ({
       if (consumerTransport) {
          consumerTransport.close()
          setConsumerTransport(null)
+         socket.emit("transportClosed", {
+            userMeta,
+            roomId,
+            transportId: consumerTransport.id,
+            type: "consumer",
+         })
       }
    }
 

@@ -336,25 +336,35 @@ const main = async () => {
          }
       })
 
-      socket.on("producerTransportClosed", async (msg) => {
+      socket.on("transportClosed", async (msg) => {
          const {
             roomId,
             userMeta,
-            producerTransportId,
+            transportId,
+            type,
          }: {
             roomId: string
             userMeta: UserMeta
-            producerTransportId: string
+            transportId: string
+            type: "producer" | "consumer"
          } = msg
-         console.log(`Peer ${userMeta.name}'s producer transport closed`)
+         console.log(
+            `Peer ${userMeta.name}'s ${type} transport closed, ${transportId}`,
+         )
          if (roomFactory.roomExists(roomId)) {
             const roomOfPeer = roomFactory.getRoom(roomId)!
-            await roomOfPeer
-               .getPeer(userMeta)
-               .handleProducerTransportClosed({ producerTransportId })
+            if (type === "producer") {
+               await roomOfPeer
+                  .getPeer(userMeta)
+                  .handleProducerTransportClosed({ transportId })
+            } else if (type === "consumer") {
+               await roomOfPeer
+                  .getPeer(userMeta)
+                  .handleProducerTransportClosed({ transportId })
+            }
          }
          console.log(
-            `Peer ${userMeta.name}'s producer transport successfully removed`,
+            `Peer ${userMeta.name}'s ${type} transport successfully removed`,
          )
       })
       socket.on("producerClosed", async (msg) => {

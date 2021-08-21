@@ -181,11 +181,20 @@ class Peer {
 
    ////////////////close transports/////////////////
    handleProducerTransportClosed = ({
-      producerTransportId,
+      transportId,
    }: {
-      producerTransportId: string
+      transportId: string
    }) => {
-      this.getTransport({ id: producerTransportId })?.close()
+      this.getTransport({ id: transportId })?.close()
+      this.removeTransport({ id: transportId })
+   }
+   handleConsumerTransportClosed = ({
+      transportId,
+   }: {
+      transportId: string
+   }) => {
+      this.getTransport({ id: transportId })?.close()
+      this.removeTransport({ id: transportId })
    }
    //Client sends message for producer closed, close producer here in server
    handleProducerClosed = ({ producerId }: { producerId: string }) => {
