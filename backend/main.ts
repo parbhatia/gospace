@@ -1,24 +1,20 @@
+import cors from "cors"
 import express from "express"
 import { createServer } from "http"
+import { MediaKind } from "mediasoup/lib/RtpParameters"
 import {
-   Router,
+   DataProducer,
+   Producer,
    RtpCapabilities,
    RtpParameters,
-   Transport,
-   Producer,
-   Consumer,
-   DataConsumer,
-   DataProducer,
    SctpStreamParameters,
 } from "mediasoup/lib/types"
-import cors from "cors"
+import { DtlsParameters } from "mediasoup/src/WebRtcTransport"
 import { Server, Socket } from "socket.io"
 import { serverPort } from "./config/index"
 import Room from "./Room"
-import { DtlsParameters } from "mediasoup/src/WebRtcTransport"
-import { UserMeta, WebRtcTransportParams } from "./types"
-import { MediaKind } from "mediasoup/lib/RtpParameters"
 import RoomFactory from "./RoomFactory"
+import { UserMeta, WebRtcTransportParams } from "./types"
 
 let io: Server
 export { io }
@@ -71,8 +67,15 @@ const main = async () => {
       })
 
       socket.on("requestCreateWebRtcTransport", async (msg, callback) => {
-         const { roomId, userMeta }: { userMeta: UserMeta; roomId: string } =
-            msg
+         const {
+            roomId,
+            userMeta,
+            transportType,
+         }: {
+            userMeta: UserMeta
+            roomId: string
+            transportType: "producer" | "consumer"
+         } = msg
          // console.log(
          //    `Peer ${userMeta.name} requests WebRtc transport connection`,
          // )
@@ -86,14 +89,29 @@ const main = async () => {
             }
             const params: WebRtcTransportParams =
                await peer.createWebRtcTransport()
-            //send created WebRtc transport's params to client, so client can use the params to create a Transport for communication
             // console.log(
             //    `Peer ${userMeta.name} successfully received WebRtc transport connection`,
             // )
+            //send created WebRtc transport's params to client, so client can use the params to create a Transport for communication
             callback({
                Status: "success",
                transportParams: params,
             })
+            // if (transportType === "consumer") {
+            //    console.log("Telling peers to broadcast to peer " + userMeta.id)
+            //    // existing peers in room need to broadcast to peer
+            //    roomFactory
+            //       .getRoom(roomId)!
+            //       .getPeers()
+            //       .forEach((p) => {
+            //          if (p.getUserMeta().id !== userMeta.id) {
+            //             p.broadcastProducersToPeer({
+            //                socketId: socket.id,
+            //                userMeta,
+            //             })
+            //          }
+            //       })
+            // }
          } else {
             callback({
                Status: "failure",
@@ -110,11 +128,13 @@ const main = async () => {
             roomId,
             transportId,
             dtlsParameters,
+            transportType,
          }: {
             userMeta: UserMeta
             roomId: string
             transportId: string
             dtlsParameters: DtlsParameters
+            transportType: "consumer" | "producer"
          } = msg
          // console.log(
          //    `Peer ${userMeta.name} requests to connect transport with id ${transportId}`,
@@ -124,10 +144,25 @@ const main = async () => {
                .getRoom(roomId)!
                .getPeer(userMeta)
                .connectTransport({ id: transportId, dtlsParameters })
-            // console.log(
-            //    `Peer ${userMeta.name} transport connection successful with transport id ${transportId}`,
-            // )
+            console.log(
+               `Peer ${userMeta.name} ${transportType} transport connection successful with transport id ${transportId}`,
+            )
             callback({ Status: "success" })
+            // if (transportType === "consumer") {
+            //    console.log("Telling peers to broadcast to peer " + userMeta.id)
+            //    // existing peers in room need to broadcast to peer
+            //    roomFactory
+            //       .getRoom(roomId)!
+            //       .getPeers()
+            //       .forEach((p) => {
+            //          if (p.getUserMeta().id !== userMeta.id) {
+            //             p.broadcastProducersToPeer({
+            //                socketId: socket.id,
+            //                userMeta,
+            //             })
+            //          }
+            //       })
+            // }
          } else {
             console.error(
                `Peer ${userMeta.name} transport connection failed with transport id ${transportId}`,
@@ -246,9 +281,9 @@ const main = async () => {
             appData: any
             paused: boolean | undefined
          } = msg
-         console.log(
-            `Peer ${userMeta.name} requests to add consumer with transportId ${transportId} and producerId ${producerId}`,
-         )
+         // console.log(
+         //    `Peer ${userMeta.name} requests to add consumer with transportId ${transportId} and producerId ${producerId}`,
+         // )
          try {
             if (roomFactory.roomExists(roomId)) {
                const room = roomFactory.getRoom(roomId)!
@@ -264,9 +299,9 @@ const main = async () => {
                if (!newConsumerParams) {
                   throw new Error("Unable to add consumer transport")
                }
-               // console.log(
-               //    `New consumer  added for Peer ${userMeta.name} with id ${newConsumerParams.id}`,
-               // )
+               console.log(
+                  `New consumer  added for Peer ${userMeta.name} with id ${newConsumerParams.id}`,
+               )
                callback({ Status: "success", newConsumerParams })
             } else {
                console.log(`No room with ${roomId} exists`)
@@ -314,7 +349,7 @@ const main = async () => {
             }
          } catch (e) {
             console.log(
-               `Peer ${userMeta.name} request to adddata consumerwith transportId ${transportId} failed!`,
+               `Peer ${userMeta.name} request to add data consumer with transportId ${transportId} failed!`,
             )
             callback({ Status: "failure", Error: e })
          }
@@ -371,6 +406,25 @@ const main = async () => {
          }
          console.log(`Peer ${userMeta.name}'s producer successfully removed`)
       })
+      socket.on("consumeExistingProducers", async (msg) => {
+         const { roomId, userMeta }: { roomId: string; userMeta: UserMeta } =
+            msg
+         if (roomFactory.roomExists(roomId)) {
+            console.log("Telling peers to broadcast to peer " + userMeta.id)
+            // existing peers in room need to broadcast to peer
+            roomFactory
+               .getRoom(roomId)!
+               .getPeers()
+               .forEach((p) => {
+                  if (p.getUserMeta().id !== userMeta.id) {
+                     p.broadcastProducersToPeer({
+                        socketId: socket.id,
+                        userMeta,
+                     })
+                  }
+               })
+         }
+      })
       socket.on("debug", async (msg) => {
          const { roomId, userMeta }: { roomId: string; userMeta: UserMeta } =
             msg
@@ -380,6 +434,7 @@ const main = async () => {
          console.log(`Peer ${userMeta.name}'s debug start ---------------`)
          if (roomFactory.roomExists(roomId)) {
             const roomOfPeer = roomFactory.getRoom(roomId)!
+            await roomOfPeer.debug()
             await roomOfPeer.getPeer(userMeta).debug()
          }
          console.log(`Peer ${userMeta.name}'s debug end ---------------`)
@@ -416,7 +471,7 @@ const main = async () => {
          roomFactory.getAllRooms().forEach(async (room, roomId) => {
             await await room.removePeerWithSocket(socket)
          })
-         console.log("A user disconnected :(")
+         // console.log("A user disconnected :(")
       })
    })
    server.listen(port, () => {

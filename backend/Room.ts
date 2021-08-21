@@ -50,8 +50,12 @@ class Room {
       this.addPeer(newPeer)
       return newPeer
    }
-   addPeer = (peer: Peer) => this.peers.set(peer.getUserMeta().id, peer)
+   addPeer = (peer: Peer) => {
+      this.peers.set(peer.getUserMeta().id, peer)
+      console.log(`Peer ${peer.getUserMeta().name} added to room ${this.id}`)
+   }
    getPeer = (userMeta: UserMeta): Peer => this.peers.get(userMeta.id)!
+   getPeers = (): Map<string, Peer> => this.peers
    hasPeer = (userMeta: UserMeta): boolean => this.peers.has(userMeta.id)
 
    //Peer's producer has closed, so close all consumers of peers in room that are consuming this producer
@@ -92,6 +96,13 @@ class Room {
       this.peers.forEach(async (peerToRemove, peerId) => {
          await this.removePeer(peerToRemove.getUserMeta())
       })
+   }
+   debug = async () => {
+      console.log(`Room ${this.id} has ${this.peers.size} peers`)
+      this.peers.forEach((p, i) => {
+         console.log(`${i} : ${p.getUserMeta().name}`)
+      })
+      console.log("")
    }
 }
 

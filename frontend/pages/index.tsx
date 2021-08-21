@@ -28,31 +28,38 @@ function getRandomInt(max: number) {
 }
 
 const VideoComponent = ({
+   peer,
    label,
    mediaStream,
 }: {
+   peer: Producer | Consumer
    label: string | null
    mediaStream: MediaStream
 }) => {
    const videoRef: any = useRef()
    useEffect(() => {
+      console.log("Setting mediaStream")
       videoRef.current.srcObject = mediaStream
       videoRef.current.muted = true
-      // return function cleanup() {
-      //    console.log("Cleaning mediaStream")
-      //    mediaStream.getTracks().forEach((track) => {
-      //       track.stop()
-      //    })
+      // return () => {
+      //    if (!peer) {
+      //       console.log("Cleaning mediaStream")
+      //       mediaStream.getTracks().forEach((track) => {
+      //          track.stop()
+      //       })
+      //    }
       // }
    }, [mediaStream])
    useEffect(() => {
       return () => {
-         console.log("Cleaning mediaStream")
-         mediaStream.getTracks().forEach((track) => {
-            track.stop()
-         })
+         // if (!peer) {
+         //    console.log("Cleaning mediaStream with id " + mediaStream.id)
+         //    mediaStream.getTracks().forEach((track) => {
+         //       track.stop()
+         //    })
+         // }
       }
-   }, [])
+   }, [peer])
    return (
       <div className="border-2">
          <video
@@ -76,7 +83,7 @@ export default function Home() {
    const socket = useContext(SocketContext)
    const deviceRef: any = useRef()
    const [deviceConnected, setDeviceConnected] = useState(false)
-   const [id] = useState(() => getRandomInt(50).toString())
+   const [id] = useState(() => getRandomInt(10000).toString())
    const [userMeta, setUserMeta] = useState({
       id: id,
       name: id,
@@ -84,20 +91,13 @@ export default function Home() {
    const [socketConnected, setSocketConnected] = useState(false)
    const [roomId, setRoomId] = useState("my-room")
    //  const [videoProducer, setVideoProducer]: Transport = useState()
-   const [producerTransportConnected, setProducerTransportConnected] =
-      useState(false)
-   const [consumerTransportConnected, setConsumerTransportConnected] =
-      useState(false)
+
    const [producing, setProducing] = useState(false)
    const [errors, setErrors] = useState({})
    const [producerTransport, setProducerTransport] =
       useState<Transport | null>()
    const [consumerTransport, setConsumerTransport] =
       useState<Transport | null>()
-   // const producerTransport = useRef<Transport>()
-   // const consumerTransport = useRef<Transport>()
-   const videoProducer = useRef<Transport>()
-   const audioProducer = useRef<Transport>()
    const [producerContainers, setProducerContainers] = useState<
       Array<{ mediaStream: MediaStream; producer: Producer; name: string }>
    >([])
@@ -106,21 +106,22 @@ export default function Home() {
          mediaStream: MediaStream
          consumer: Consumer
          name: string
-         id: string
+         // id: string
       }>
    >([])
    const dataProducers = useRef<Array<DataProducer>>([])
    const dataConsumers = useRef<Array<DataConsumer>>([])
    const canvasDataProducer = useRef<DataProducer>()
-   const remoteVideoRef: any = useRef()
 
    const closeStream = (stream: MediaStream) => {
+      console.log("clsoeStream", stream.id)
       stream.getTracks().forEach((track) => {
-         console.log("closing stream track")
+         console.log("closing stream track for stream with id", stream.id)
          track.stop()
       })
    }
 
+   //Monitor producer transport
    useEffect(() => {
       if (producerTransport) {
          const pt: Transport = producerTransport
@@ -134,6 +135,7 @@ export default function Home() {
                      roomId,
                      transportId: pt.id,
                      dtlsParameters,
+                     transportType: "producer",
                   },
                   (response: any) => {
                      if (response.Status === "success") {
@@ -215,13 +217,11 @@ export default function Home() {
          pt.on("connectionstatechange", (state: string) => {
             switch (state) {
                case "connected":
-                  setProducerTransportConnected(true)
                   break
                case "connecting":
                   break
                case "failed":
                   setErrors({ ...errors, ProducingFailed: true })
-                  setProducerTransportConnected(false)
                   pt.close()
                   break
                default:
@@ -239,11 +239,21 @@ export default function Home() {
       }
    }, [producerTransport])
 
+   //Monitor consumer transport
    useEffect(() => {
       if (consumerTransport) {
+         // There might already be producers in the room, by now, we have a consumer transport, so we are ready to consume such producers
+         if (!consumerTransport.closed) {
+            socket.emit("consumeExistingProducers", {
+               roomId,
+               userMeta,
+            })
+         }
          const ct: Transport = consumerTransport
+
          ct.on("connect", async ({ dtlsParameters }, callback, errback) => {
             // Signal local DTLS parameters to the server side transport.
+            console.log("EUREKA!")
             try {
                socket.emit(
                   "connectTransport",
@@ -252,6 +262,7 @@ export default function Home() {
                      roomId,
                      transportId: ct.id,
                      dtlsParameters,
+                     transportType: "consumer",
                   },
                   (response: any) => {
                      if (response.Status === "success") {
@@ -271,7 +282,6 @@ export default function Home() {
          ct.on("connectionstatechange", (state: string) => {
             switch (state) {
                case "connected":
-                  setConsumerTransportConnected(true)
                   //  socket.emit("resumeConsumerStream")
                   break
                case "connecting":
@@ -279,7 +289,6 @@ export default function Home() {
                //emit resume consumer stream object
                case "failed":
                   setErrors({ ...errors, ConsumingFailed: true })
-                  setConsumerTransportConnected(false)
                   ct.close()
                   break
                default:
@@ -294,18 +303,30 @@ export default function Home() {
             //  consumers.current = []
          })
       }
-   }, [consumerTransport])
+   }, [consumerTransport, socket])
 
+   const removeProducer = (producerId: string) => {
+      // producers.current = producers.current.filter(
+      //    (p) => p.id !== producerId,
+      // )
+      console.log(producerContainers)
+      console.log("removeProducer")
+      // const setProducerContainerToRemove = producerContainers.filter(
+      //    (p) => p.producer.id === producerId,
+      // )[0]
+      // console.log({ setProducerContainerToRemove })
+      producerContainers.forEach((p) => {
+         if (p.producer.id === producerId) {
+            closeStream(p.mediaStream)
+         }
+      })
+
+      setProducerContainers(
+         producerContainers.filter((p) => p.producer.id !== producerId),
+      )
+   }
    const createProducer = async (mediaConstraints: MediaStreamConstraints) => {
       try {
-         const removeProducer = (producerId: string) => {
-            // producers.current = producers.current.filter(
-            //    (p) => p.id !== producerId,
-            // )
-            setProducerContainers(
-               producerContainers.filter((p) => p.producer.id !== producerId),
-            )
-         }
          // const handleProducerClosed = (producerId: string) => {
          //    socket.emit("producerClosed", {
          //       userMeta,
@@ -368,7 +389,10 @@ export default function Home() {
             producer,
             name: "",
          }
-         setProducerContainers([...producerContainers, newProducerContainer])
+         setProducerContainers((prevState) => [
+            ...prevState,
+            newProducerContainer,
+         ])
       } catch (err) {
          console.log("Transport state", producerTransport)
          console.error(err)
@@ -391,7 +415,7 @@ export default function Home() {
    }> => {
       return new Promise(async (resolve, reject) => {
          let transport: Transport
-         if (!consumerTransport || !deviceRef || !deviceRef.current) {
+         if (!consumerTransport) {
             console.log("Create consumer is requesting web rtc transport")
             const newConsumerTransport = await requestCreateWebRtcTransport(
                socket,
@@ -399,6 +423,9 @@ export default function Home() {
                "consumer",
             )
             transport = newConsumerTransport
+         } else if (!deviceRef || !deviceRef.current) {
+            transport = consumerTransport
+            reject()
          } else {
             transport = consumerTransport
          }
@@ -408,6 +435,16 @@ export default function Home() {
             // consumers.current = consumers.current.filter(
             //    (c) => c.id !== consumerId,
             // )
+            // const consumerContainerToRemove = consumerContainers.filter(
+            //    (c) => c.consumer.id === consumerId,
+            // )[0]
+            // closeStream(consumerContainerToRemove.mediaStream)
+            consumerContainers.forEach((c) => {
+               if (c.consumer.id === consumerId) {
+                  closeStream(c.mediaStream)
+               }
+            })
+
             setConsumerContainers(
                consumerContainers.filter((c) => c.consumer.id !== consumerId),
             )
@@ -492,18 +529,22 @@ export default function Home() {
    }
 
    const createDataProducer = async () => {
+      let transport: Transport
       if (!producerTransport) {
-         await requestCreateWebRtcTransport(
+         const newProducerTransport = await requestCreateWebRtcTransport(
             socket,
             deviceRef.current,
             "producer",
          )
+         transport = newProducerTransport
       } else {
-         const newDataProducer = await producerTransport!.produceData()
-         canvasDataProducer.current = newDataProducer
-
-         dataProducers.current.push(newDataProducer)
+         transport = producerTransport
       }
+      const newDataProducer = await transport.produceData()
+
+      canvasDataProducer.current = newDataProducer
+
+      dataProducers.current.push(newDataProducer)
    }
 
    const createDataConsumer = async ({
@@ -511,20 +552,23 @@ export default function Home() {
    }: {
       dataProducerId: string
    }) => {
-      if (!consumerTransport || !consumerTransport) {
-         await requestCreateWebRtcTransport(
+      let transport: Transport
+      if (!consumerTransport) {
+         const newConsumerTransport = await requestCreateWebRtcTransport(
             socket,
             deviceRef.current,
             "consumer",
          )
-         //  throw new Error("Invalid consumer transport")
+         transport = newConsumerTransport
+      } else {
+         transport = consumerTransport
       }
       await socket.emit(
          "addDataConsumer",
          {
             userMeta,
             roomId,
-            transportId: consumerTransport!.id,
+            transportId: transport.id,
             dataProducerId,
          },
          async (response: any) => {
@@ -540,7 +584,7 @@ export default function Home() {
                protocol,
                dataProducerId,
             }: DataConsumerOptions = response.newConsumerParams
-            const dataConsumer = await consumerTransport!.consumeData({
+            const dataConsumer = await transport.consumeData({
                id,
                dataProducerId,
                sctpStreamParameters,
@@ -586,11 +630,11 @@ export default function Home() {
             peerName,
             producerId,
          })
-         // console.log(
-         //    "before",
-         //    JSON.stringify(consumerContainers.map((c) => c.id)),
-         // )
-         setConsumerContainers([...consumerContainers, newConsumerContainer])
+
+         setConsumerContainers((prevState) => [
+            ...prevState,
+            newConsumerContainer,
+         ])
       } catch (err) {
          console.error("Failed to consume media from producer")
          //Show failed to consume media from new producer message
@@ -629,6 +673,7 @@ export default function Home() {
             {
                roomId,
                userMeta,
+               transportType,
             },
             async (response: any) => {
                if (response.Status === "success") {
@@ -658,7 +703,6 @@ export default function Home() {
          )
       })
    }
-   // console.log("consumerContainers", JSON.stringify(consumerContainers))
 
    //Create device and initialize it.
    //A Device is an endpoint that connects to a Router to send/receive media
@@ -721,21 +765,28 @@ export default function Home() {
 
    const closeConsumer = useCallback(
       (msg) => {
-         const { id }: { id: string } = msg
+         const { id, userMeta: senderMeta } = msg
          console.log(
-            `Client ${userMeta.name} received close consumer request ${id}`,
+            `Client ${userMeta.name} received close consumer request from ${senderMeta.name}`,
          )
          consumerContainers.forEach((c) => {
             if (c.consumer.id === id) {
-               c.consumer.close()
+               closeStream(c.mediaStream)
             }
          })
+         // setConsumerContainers((oldConsumerContainers) =>
+         //    oldConsumerContainers.filter((c) => c.consumer.id !== id),
+         // )
          setConsumerContainers(
             consumerContainers.filter((c) => c.consumer.id !== id),
          )
       },
       [consumerContainers],
    )
+
+   const closeAllStreams = () => {
+      //close all producer and consumer streams
+   }
 
    const newProducer = useCallback(
       async (msg) => {
@@ -751,8 +802,12 @@ export default function Home() {
             )
             await initConsumeMedia({ peerId, peerName, producerId })
          }
+         console.log(
+            "state in newProducer callback",
+            consumerContainers.map((c) => c.id),
+         )
       },
-      [consumerContainers],
+      [initConsumeMedia],
    )
    const newDataProducer = useCallback(
       async (msg: any) => {
@@ -768,7 +823,7 @@ export default function Home() {
             await initDataConsume({ peerId, dataProducerId })
          }
       },
-      [dataConsumers],
+      [initDataConsume],
    )
    const RTPCapabilitiesPayload = useCallback(
       async (msg: any) => {
@@ -780,17 +835,18 @@ export default function Home() {
             setErrors({ ...errors, RTPCapabilitiesPayload: true })
          }
       },
-      [errors, deviceRef],
+      [errors, deviceRef, initializeClientTransports, loadDevice],
    )
 
    const socketConnect = useCallback(() => {
       console.log("Client connected", socket.id)
       setSocketConnected(true)
       requestRouterRTPCapabilities()
-   }, [])
+   }, [requestRouterRTPCapabilities])
+
    const socketError = useCallback(() => {
       setErrors({ ...errors, SocketConnectionError: true })
-   }, [])
+   }, [setErrors])
    const listenToSockets = () => {
       socket.on("error", socketError)
       socket.on("RTPCapabilitiesPayload", RTPCapabilitiesPayload)
@@ -807,9 +863,16 @@ export default function Home() {
       socket.off("closeConsumer", closeConsumer)
    }
    const closeSocket = () => {
+      console.log("running clsoe socket")
       // consumerTransport.current.close()
       // producerTransport.current.close()
       unListenToSockets()
+      if (consumerTransport) {
+         consumerTransport.close()
+      }
+      if (producerTransport) {
+         producerTransport.close()
+      }
       // disconnect socket
       socket.emit("removePeer", { userMeta, roomId })
       socket.disconnect()
@@ -829,9 +892,21 @@ export default function Home() {
       closeConsumer,
    ])
 
+   const debug = () => {
+      console.log("ProducerContainers:")
+      producerContainers.forEach(async (p, i) => {
+         console.log(p.name, p.mediaStream)
+      })
+      console.log("ConsumersContainers:")
+      consumerContainers.forEach(async (p, i) => {
+         console.log(p.name, p.mediaStream)
+      })
+      console.log("")
+   }
+
    useEffect(() => {
       socket.on("connect", socketConnect)
-      return closeSocket
+      return () => closeSocket()
    }, [])
 
    return (
@@ -849,7 +924,7 @@ export default function Home() {
                ) : (
                   <div className="lg bg-red-500">DEVICE DISCONNECTED</div>
                )}
-               {producerTransportConnected ? (
+               {producerTransport && !producerTransport.closed ? (
                   <div className="lg bg-green-500">
                      PRODUCER TRANSPORT CONNECTED
                   </div>
@@ -858,7 +933,7 @@ export default function Home() {
                      PRODUCER TRANSPORT DISCONNECTED
                   </div>
                )}
-               {consumerTransportConnected ? (
+               {consumerTransport && !consumerTransport.closed ? (
                   <div className="lg bg-green-500">
                      CONSUMER TRANSPORT CONNECTED
                   </div>
@@ -882,17 +957,33 @@ export default function Home() {
                      Produce Video
                   </button>
                </div>
-               <div>Producers</div>
-               <div>
-                  {/* {JSON.stringify(producerContainers.map((p) => p.producer.id))} */}
+               <div className="flex">
+                  <div>Producers</div>
                   <div>
-                     {producerContainers.map((p) => (
-                        <div key={p.producer.id}>
+                     <div>
+                        {producerContainers.map((p) => (
+                           <div key={p.producer.id}>
+                              <VideoComponent
+                                 label={null}
+                                 mediaStream={p.mediaStream}
+                                 peer={p.producer}
+                              />
+                              {/* <p>{p.producer.id}</p> */}
+                           </div>
+                        ))}
+                     </div>
+                  </div>
+                  <div>Consumers</div>
+                  <div className="flex">
+                     {consumerContainers.map((c, i) => (
+                        <div key={i} className="border-2">
                            <VideoComponent
-                              label={null}
-                              mediaStream={p.mediaStream}
+                              label={c.name}
+                              mediaStream={c.mediaStream}
+                              peer={c.consumer}
                            />
-                           {/* <p>{p.producer.id}</p> */}
+                           {/* <p>{c.consumer.id}</p> */}
+                           {/* <p>{c.name}</p> */}
                         </div>
                      ))}
                   </div>
@@ -969,26 +1060,27 @@ export default function Home() {
                <div>
                   <button
                      onClick={() => {
+                        debug()
                         socket.emit("debug", { roomId, userMeta })
                      }}
                   >
                      Debug
                   </button>
                </div>
-
-               <div>Consumers</div>
-               <div className="flex">
-                  {consumerContainers.map((c, i) => (
-                     <div key={i} className="border-2">
-                        <VideoComponent
-                           label={c.name}
-                           mediaStream={c.mediaStream}
-                        />
-                        {/* <p>{c.consumer.id}</p> */}
-                        {/* <p>{c.name}</p> */}
-                     </div>
-                  ))}
+               <div>
+                  <button
+                     onClick={() => {
+                        if (consumerTransport)
+                           socket.emit("consumeExistingProducers", {
+                              roomId,
+                              userMeta,
+                           })
+                     }}
+                  >
+                     Get existing
+                  </button>
                </div>
+
                {/* <div>{JSON.stringify(consumerContainers.map((c) => c.id))}</div> */}
             </div>
          </main>

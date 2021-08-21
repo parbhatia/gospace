@@ -14,6 +14,7 @@ import {
    SctpStreamParameters,
 } from "mediasoup/lib/types"
 import { Socket } from "socket.io"
+import { io } from "./main"
 
 import mediasoupConfig from "./config/mediasoup"
 import Room from "./Room"
@@ -162,6 +163,7 @@ class Peer {
       if (notifyClient) {
          this.socket.emit("closeConsumer", {
             id,
+            userMeta: this.userMeta,
          })
       }
       this.consumers.delete(id)
@@ -250,7 +252,7 @@ class Peer {
          })
          this.producers.set(newId, newProducer)
          //notify peers of my producing
-         this.broadcastNewProducer({ producerId: newId })
+         this.broadcastProducerToRoom({ producerId: newId })
          return newProducer
       } else {
          return null
@@ -365,16 +367,40 @@ class Peer {
          return null
       }
    }
-   broadcastNewProducer = ({ producerId }: { producerId: string }) => {
-      // Notify all OTHER peers in the room that new peer has been added a producer, and peers should start consuming
-      // calling .to() with the original socket will only emit to everyone in the room, but original socket client
+   broadcastProducerToRoom = ({ producerId }: { producerId: string }) => {
+      // Notify all OTHER peers in the room to consume producer
       // console.log(
       //    `Peer ${this.userMeta.name} is broadcasting its arrival of new producer`,
       // )
-      this.socket.to(this.roomId).emit("newProducer", {
-         peerId: this.userMeta.id,
-         peerName: this.userMeta.name,
-         producerId,
+      const producer = this.getProducer({ id: producerId })
+      if (producer && !producer.closed) {
+         this.socket.to(this.roomId).emit("newProducer", {
+            peerId: this.userMeta.id,
+            peerName: this.userMeta.name,
+            producerId,
+         })
+      }
+   }
+   broadcastProducersToPeer = ({
+      userMeta,
+      socketId,
+   }: {
+      userMeta: UserMeta
+      socketId: string
+   }) => {
+      // Notify specific peer in the room to consume all producers
+      console.log(
+         `Peer ${this.userMeta.name} is broadcasting all producers to peer ${userMeta.name}`,
+      )
+      this.producers.forEach((producer) => {
+         // console.log(producer)
+         if (!producer.closed || !producer.paused) {
+            io.to(socketId).emit("newProducer", {
+               peerId: this.userMeta.id,
+               peerName: this.userMeta.name,
+               producerId: producer.id,
+            })
+         }
       })
    }
    broadcastNewDataProducer = ({
