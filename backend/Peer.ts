@@ -285,6 +285,11 @@ class Peer {
          this.router.canConsume({ producerId, rtpCapabilities }) &&
          this.transportExists({ id })
       ) {
+         if (this.getConsumerOfProducer({ producerId }) !== null) {
+            //This is here for tests
+            console.log("Consumer exists")
+            return null
+         }
          // console.log(
          //    `Peer ${this.userMeta.name}'s router is able to consume producer with id ${producerId}`,
          // )
@@ -467,13 +472,8 @@ class Peer {
 
    closeTransports = async () => {
       console.log(`Peer ${this.userMeta.name} is closing all its transports`)
-      this.transports.forEach((t) => t.close())
       //Producers and Consumers will close and delete themselves if any associated transport closes
-      /////
-      // this.producers.forEach((t) => t.close())
-      // this.consumers.forEach((t) => t.close())
-      // this.dataProducers.forEach((t) => t.close())
-      // this.dataConsumers.forEach((t) => t.close())
+      this.transports.forEach((t) => t.close())
    }
    debug = async () => {
       console.log("")
