@@ -4,7 +4,9 @@ import { SERVER_BASE_URL } from "../config"
 
 export const socket: Socket = io(SERVER_BASE_URL, {
    path: "/server/",
-   withCredentials: false,
+   secure: true,
+   // withCredentials: false,
+   rejectUnauthorized: false, // set to false only if you use self-signed certificate !
 })
 
 export const SocketContext = createContext<Socket>(socket)

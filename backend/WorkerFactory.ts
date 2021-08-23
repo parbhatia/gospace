@@ -41,11 +41,27 @@ class WorkerFactory {
    getAvailableWorkerResourceUsage = async (): Promise<WorkerResourceUsage> =>
       await this.getAvailableWorker().getResourceUsage()
 
+   getWorkerResourceUsage = async ({
+      workerPID,
+   }: {
+      workerPID: number
+   }): Promise<WorkerResourceUsage | null> => {
+      const worker = this.workers.filter((w) => w.pid === workerPID)[0]
+      if (worker) {
+         return worker.getResourceUsage()
+      }
+      return null
+   }
+
    //this is where we would schedule get workers to create routers on based on worker's CPU util
-   //for now, just use one worker
+   // in this case, we just use round robin
    getAvailableWorker = (): Worker => {
       const nextWorker: Worker = this.workers[this.availableWorkerIdx]
-      // this.availableWorkerIdx++
+      if (this.availableWorkerIdx === this.workers.length - 1) {
+         this.availableWorkerIdx = 0
+      } else {
+         ++this.availableWorkerIdx
+      }
       return nextWorker
    }
    getAllWorkers = (): Array<Worker> => this.workers

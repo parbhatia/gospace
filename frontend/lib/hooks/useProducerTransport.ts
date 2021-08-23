@@ -37,7 +37,7 @@ const useProducerTransport = ({
    }
 
    const closeProducerTransport = () => {
-      if (producerTransport) {
+      if (producerTransport && !producerTransport.closed) {
          producerTransport.close()
          setProducerTransport(null)
          socket.emit("transportClosed", {
@@ -85,7 +85,7 @@ const useProducerTransport = ({
             // the server side new producer.
             try {
                socket.emit(
-                  "addProducerTransport",
+                  "addProducer",
                   {
                      userMeta,
                      roomId,

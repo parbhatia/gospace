@@ -1,6 +1,6 @@
 import cors from "cors"
 import express from "express"
-import { createServer } from "http"
+// import { createServer } from "http"
 import { Server, Socket } from "socket.io"
 import { serverPort } from "./config/index"
 import addConsumer from "./helpers/socket/addConsumer"
@@ -31,9 +31,6 @@ const certificate = fs.readFileSync(
    "utf8",
 )
 const credentials = { key: privateKey, cert: certificate }
-
-// var httpServer = http.createServer(app)
-// var httpsServer = https.createServer(credentials, app)
 
 let io: Server
 export { io }

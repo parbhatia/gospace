@@ -27,20 +27,27 @@ const MediaComponent = ({
       }
    }, [])
    return (
-      <div className="border-2">
+      <div className="w-full rounded">
+         {/* <img
+            alt="team"
+            className="flex-shrink-0 object-cover object-center w-full h-56 mb-4 rounded-lg"
+            src="https://dummyimage.com/202x202"
+         /> */}
          <video
+            className="rounded-md"
             muted
             loop
             autoPlay
             //  controls
             playsInline
             ref={videoRef}
-            style={{
-               width: "100px",
-               height: "100px",
-            }}
          ></video>
-         {label ? <p>{label}</p> : null}
+         <div className="w-full text-center">
+            <h2 className="text-lg font-medium text-gray-900 title-font">
+               {label}
+            </h2>
+            {/* <h3 className="mb-3 text-gray-500">UI Developer</h3> */}
+         </div>
       </div>
    )
 }

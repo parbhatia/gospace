@@ -1,10 +1,7 @@
-import { RtpCodecCapability } from "mediasoup/lib/RtpParameters"
-import { Router, Worker } from "mediasoup/lib/types"
+import { Router } from "mediasoup/lib/types"
 import { Socket } from "socket.io"
-import config from "./config/mediasoup"
 import Peer from "./Peer"
 import { UserMeta } from "./types"
-import WorkerFactory from "./WorkerFactory"
 interface RoomConstructParams {
    id: string
    router: Router

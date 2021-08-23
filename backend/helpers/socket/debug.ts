@@ -14,6 +14,7 @@ export default ({
          "------------------------------------------------------------",
       )
       console.log(`Peer ${userMeta.name}'s debug start ---------------`)
+      await roomFactory.debug({ roomId })
       if (roomFactory.roomExists(roomId)) {
          const roomOfPeer = roomFactory.getRoom(roomId)!
          await roomOfPeer.debug()

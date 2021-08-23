@@ -1,25 +1,27 @@
 {
-  "name": "frontend",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start"
-  },
-  "dependencies": {
-    "mediasoup-client": "^3.6.37",
-    "nanoid": "^3.1.25",
-    "next": "11.1.0",
-    "react": "17.0.2",
-    "react-dom": "17.0.2",
-    "socket.io-client": "^4.1.3"
-  },
-  "devDependencies": {
-    "@types/react": "17.0.17",
-    "autoprefixer": "^10.3.1",
-    "postcss": "^8.3.6",
-    "tailwindcss": "^2.2.7",
-    "typescript": "4.3.5"
-  }
+    "name": "frontend",
+    "version": "0.1.0",
+    "private": true,
+    "scripts": {
+        "dev": "next dev",
+        "build": "next build",
+        "start": "next start"
+    },
+    "dependencies": {
+        "mediasoup-client": "^3.6.37",
+        "nanoid": "^3.1.25",
+        "next": "11.1.0",
+        "react": "17.0.2",
+        "react-canvas-draw": "^1.1.1",
+        "react-color": "^2.19.3",
+        "react-dom": "17.0.2",
+        "socket.io-client": "^4.1.3"
+    },
+    "devDependencies": {
+        "@types/react": "17.0.17",
+        "autoprefixer": "^10.3.1",
+        "postcss": "^8.3.6",
+        "tailwindcss": "^2.2.7",
+        "typescript": "4.3.5"
+    }
 }

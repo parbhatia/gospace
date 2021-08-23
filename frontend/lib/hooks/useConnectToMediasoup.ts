@@ -3,7 +3,7 @@ import { RtpCapabilities } from "mediasoup-client/lib/RtpParameters"
 import { Transport } from "mediasoup-client/lib/Transport"
 import { useEffect, useState } from "react"
 import { Socket } from "socket.io-client"
-import { UserMeta } from "../../../backend/types"
+import { UserMeta } from "../types"
 import useConsumerTransport from "./useConsumerTransport"
 import useMonitorConnection from "./useMonitorConnection"
 import useProducerTransport from "./useProducerTransport"
@@ -38,7 +38,7 @@ const useConnectToMediasoup = ({
       socket,
       device: mediaSoupDevice,
    })
-   const connected = useMonitorConnection({ socket, consumerTransport })
+   const connectionStatus = useMonitorConnection({ socket, consumerTransport })
    const [errors, setErrors] = useState({})
 
    //Create transport for producer and consumer
@@ -81,6 +81,12 @@ const useConnectToMediasoup = ({
    // Request RouterRTPCapabilities from mediasoup Router, so we can create and endpoint (Device)
    const requestRouterRTPCapabilities = async () =>
       new Promise((resolve, reject) => {
+         //incase we're reconnecting, close existing transports
+         if (producerTransport || consumerTransport) {
+            console.log("Closing existing transports")
+            closeProducerTransport()
+            closeConsumerTransport()
+         }
          socket.emit(
             "requestRouterRTPCapabilities",
             { roomId, userMeta },
@@ -110,7 +116,7 @@ const useConnectToMediasoup = ({
    const connectToRoom = requestRouterRTPCapabilities
 
    return {
-      connected,
+      connectionStatus,
       producerTransport,
       consumerTransport,
       initializeProducerTransport,

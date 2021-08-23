@@ -85,7 +85,7 @@ const useConsumers = ({
          const { rtpCapabilities } = mediaSoupDevice!
 
          socket.emit(
-            "addConsumerTransport",
+            "addConsumer",
             {
                userMeta,
                roomId,

@@ -99,7 +99,7 @@ const useConsumerTransport = ({
    }, [consumerTransport, socket])
 
    const closeConsumerTransport = () => {
-      if (consumerTransport) {
+      if (consumerTransport && !consumerTransport.closed) {
          consumerTransport.close()
          setConsumerTransport(null)
          socket.emit("transportClosed", {

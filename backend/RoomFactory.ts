@@ -27,6 +27,7 @@ class RoomFactory {
          await this.getRoom(roomId)?.removeAllPeers()
          console.log("Removing room", roomId)
          this.rooms.delete(roomId)
+         this.roomToWorker.delete(roomId)
       }
    }
    roomExists = (roomId: string): boolean => {
@@ -38,26 +39,46 @@ class RoomFactory {
       return me
    }
 
-   createNewRoom = async (): Promise<Room> => {
-      const defaultMediaCodecs = config.mediasoup.router.mediaCodecs
-      const worker = this.workerFactory.getAvailableWorker()
-      const router: Router = await worker.createRouter({
-         mediaCodecs: defaultMediaCodecs,
-      })
-      const newRoomId = uniqueRoomIdGenerator()
-      const newRoom = await new Room({
-         id: newRoomId,
-         router,
-         removeRoom: this.removeRoom,
-      })
-      router.on("workerclose", async () => {
-         await this.removeRoom(newRoomId)
-      })
-      this.roomToWorker.set(newRoom.getId(), worker.pid)
-      this.rooms.set(newRoom.getId(), newRoom)
-      return newRoom
+   createNewRoom = async (): Promise<Room | undefined> => {
+      try {
+         const defaultMediaCodecs = config.mediasoup.router.mediaCodecs
+         const worker = this.workerFactory.getAvailableWorker()
+         if (!worker) {
+            throw new Error("Worker is not defined")
+         }
+         const router: Router = await worker.createRouter({
+            mediaCodecs: defaultMediaCodecs,
+         })
+         const newRoomId = uniqueRoomIdGenerator()
+         const newRoom = await new Room({
+            id: newRoomId,
+            router,
+            removeRoom: this.removeRoom,
+         })
+         router.on("workerclose", async () => {
+            await this.removeRoom(newRoomId)
+         })
+         this.roomToWorker.set(newRoom.getId(), worker.pid)
+         this.rooms.set(newRoom.getId(), newRoom)
+         return newRoom
+      } catch (e) {
+         console.error("Could not create new room")
+      }
    }
    createDefaultRooms = async (WorkerFactory: WorkerFactory) => {}
+   debug = async ({ roomId }: { roomId: string }) => {
+      console.log("Worker stats:")
+      if (this.roomExists(roomId)) {
+         const workerPID = this.getRoomWorkerPid(roomId)!
+         const resourceUsage = await this.workerFactory.getWorkerResourceUsage({
+            workerPID,
+         })
+         if (resourceUsage) {
+            console.log(resourceUsage)
+         }
+      }
+      console.log("")
+   }
 }
 
 export default RoomFactory

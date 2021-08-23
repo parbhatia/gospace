@@ -10,15 +10,21 @@ const useMonitorConnection = ({
    socket: Socket
    consumerTransport: Transport | null
 }) => {
-   const [connected, setConnected] = useState(false)
+   const [status, setStatus] = useState<
+      "disconnected" | "connected" | "failure" | "connecting"
+   >("disconnected")
    useEffect(() => {
-      if (socket && consumerTransport) {
-         setConnected(true)
+      if (socket && socket.connected && consumerTransport) {
+         setStatus("connected")
+      } else if (socket && socket.connected && !consumerTransport) {
+         setStatus("connecting")
+      } else if (socket && socket.disconnected) {
+         setStatus("disconnected")
       } else {
-         setConnected(false)
+         setStatus("disconnected")
       }
    }, [socket, consumerTransport])
-   return connected
+   return status
 }
 
 export default useMonitorConnection
