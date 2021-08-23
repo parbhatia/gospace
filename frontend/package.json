@@ -8,6 +8,7 @@
         "start": "next start"
     },
     "dependencies": {
+        "lz-string": "^1.4.4",
         "mediasoup-client": "^3.6.37",
         "nanoid": "^3.1.25",
         "next": "11.1.0",

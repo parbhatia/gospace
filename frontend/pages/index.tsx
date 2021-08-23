@@ -16,6 +16,7 @@ import useConsumers from "../lib/hooks/useConsumers"
 import useDebug from "../lib/hooks/useDebug"
 import useProducers from "../lib/hooks/useProducers"
 import { SocketContext } from "../lib/socket"
+import { compress, decompress } from "lz-string"
 
 export default function Home() {
    const socket = useContext(SocketContext)
@@ -140,27 +141,21 @@ export default function Home() {
                })
                dataConsumer.on("message", async (data) => {
                   //data is likely stringified json, might need to parse
+                  await loadToCanvas(data)
                   // console.log("RECEIVED DATA MESSAGE", data)
-                  const newData = JSON.parse(data)
-                  // canvasRef.current!.loadSaveData(newData, false) //2nd param is immediate
-                  // await canvasRef.current.loadPaths(JSON.parse(data))
-                  // await loadToCanvas(newData)
-                  setLoadingCanvasData(true)
-                  canvasRef.current!.loadSaveData(newData, true) //2nd param is immediate
-                  setLoadingCanvasData(false)
                })
                dataConsumers.current.push(dataConsumer)
             },
          )
       })
 
-   // const loadToCanvas = (loadedData): Promise<void> =>
-   //    new Promise((resolve, reject) => {
-   //       setLoadingCanvasData(true)
-   //       canvasRef.current!.loadSaveData(loadedData, false) //2nd param is immediate
-   //       setLoadingCanvasData(false)
-   //       resolve()
-   //    })
+   const loadToCanvas = async (rawData) => {
+      if (!canvasRef || !canvasRef.current) return null
+      const decompressedParsedCanvasData = decompress(JSON.parse(rawData))
+      setLoadingCanvasData(true)
+      canvasRef.current!.loadSaveData(decompressedParsedCanvasData, true) //2nd param is immediate loading
+      setLoadingCanvasData(false)
+   }
 
    const initDataConsume = async ({
       peerId,
@@ -198,20 +193,21 @@ export default function Home() {
    }) => {
       if (dataProducer && !dataProducer.closed) {
          if (sendRaw) {
-            await dataProducer.send(JSON.stringify(data))
-         } else {
             await dataProducer.send(data)
+         } else {
+            await dataProducer.send(JSON.stringify(data))
          }
       }
    }
 
-   const sendCanvasPaths = async () => {
-      if (loadingCanvasData) return null
+   const sendCanvasData = async () => {
+      if (loadingCanvasData || !canvasRef || !canvasRef.current) return null
       const savedData = await canvasRef.current.getSaveData()
+      const compressedStringData = compress(savedData)
       await sendData({
          dataProducer: canvasDataProducer.current,
-         data: savedData,
-         sendRaw: true,
+         data: compressedStringData,
+         sendRaw: false,
       })
    }
 
@@ -315,7 +311,6 @@ export default function Home() {
          <main className="p-2 m-2">
             <StatusComponent connectionStatus={connectionStatus} />
             <div>
-               <div>{userMeta.name}</div>
                <div className="flex flex-wrap justify-center">
                   <Button
                      label="Camera On"
@@ -416,9 +411,6 @@ export default function Home() {
                      <pre>{JSON_DEBUG_STATEMENT}</pre>
                   </>
                )}
-               {/* <div>
-                  Learn <a href="/RoomList">Room List!</a>
-               </div> */}
             </div>
             <section className="text-gray-600 body-font">
                <div className="container px-5 py-24 mx-auto">
@@ -426,7 +418,7 @@ export default function Home() {
                      {producerContainers.map((p) => (
                         <div key={p.producer.id}>
                            <MediaComponent
-                              label={null}
+                              label={userMeta.name}
                               mediaStream={p.mediaStream}
                               peer={p.producer}
                            />
@@ -455,26 +447,8 @@ export default function Home() {
                   </div>
                </div>
             </section>
-            <Canvas canvasRef={canvasRef} onChange={sendCanvasPaths} />
+            <Canvas canvasRef={canvasRef} onChange={sendCanvasData} />
          </main>
       </SocketContext.Provider>
    )
 }
-
-// const DummyVideoComponent = () => (
-//    <div className="p-4 lg:w-1/4 md:w-1/2">
-//       <div className="flex flex-col items-center h-full text-center">
-//          <img
-//             alt="team"
-//             className="flex-shrink-0 object-cover object-center w-full h-56 mb-4 rounded-lg"
-//             src="https://dummyimage.com/202x202"
-//          />
-//          <div className="w-full">
-//             <h2 className="text-lg font-medium text-gray-900 title-font">
-//                Atticus Finch
-//             </h2>
-//             <h3 className="mb-3 text-gray-500">UI Developer</h3>
-//          </div>
-//       </div>
-//    </div>
-// )

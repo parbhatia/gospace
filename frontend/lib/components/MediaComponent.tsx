@@ -27,14 +27,14 @@ const MediaComponent = ({
       }
    }, [])
    return (
-      <div className="w-full rounded">
+      <div className="w-full ">
          {/* <img
             alt="team"
             className="flex-shrink-0 object-cover object-center w-full h-56 mb-4 rounded-lg"
             src="https://dummyimage.com/202x202"
          /> */}
          <video
-            className="rounded-md"
+            className="border-4 border-black shadow-lg"
             muted
             loop
             autoPlay
