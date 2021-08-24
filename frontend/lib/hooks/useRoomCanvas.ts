@@ -50,7 +50,13 @@ const useRoomCanvas = ({ createDataProducer }: { createDataProducer: any }) => {
       }
       const savedData = await canvasRef.current.getSaveData()
       const compressedStringData = compress(savedData)
-      await canvasProducer.send(JSON.stringify(compressedStringData))
+      if (canvasProducer.readyState === "open") {
+         await canvasProducer.send(JSON.stringify(compressedStringData))
+      } else {
+         console.error(
+            "Error sending canvas data, data producer not in ready state",
+         )
+      }
    }
 
    const loadToCanvas = async (rawData) => {

@@ -37,6 +37,7 @@ const useDataProducers = ({
       type: DataProducerOrConsumerType
    }) =>
       new Promise(async (resolve, reject) => {
+         console.log("createDataProducer")
          try {
             let transport: Transport
             if (!producerTransport) {
@@ -47,7 +48,11 @@ const useDataProducers = ({
             } else {
                transport = producerTransport
             }
-            const dataProducer = await transport!.produceData()
+            const dataProducer = await transport!.produceData({
+               appData: {
+                  dataType: type,
+               },
+            })
 
             //data producer will close automatically since transport closed
             dataProducer.on("transportclose", () => {
@@ -58,7 +63,23 @@ const useDataProducers = ({
                })
             })
 
+            dataProducer.on("error", (err) => {
+               console.log("Data Producer has error", err)
+               // removeDataProducer({
+               //    dataProducerId: dataProducer.id,
+               //    dataProducerType: type,
+               // })
+            })
+            dataProducer.on("bufferedamountlow", () => {
+               console.log("Data Producer has buffered amount low")
+               // removeDataProducer({
+               //    dataProducerId: dataProducer.id,
+               //    dataProducerType: type,
+               // })
+            })
+
             dataProducer.on("close", () => {
+               signalDataProducerClosed(dataProducer.id)
                console.log("Data Producer has closed in data producer")
                removeDataProducer({
                   dataProducerId: dataProducer.id,
@@ -69,6 +90,7 @@ const useDataProducers = ({
                console.log(
                   "Data Producer has been observed closed in data producer",
                )
+               signalDataProducerClosed(dataProducer.id)
                removeDataProducer({
                   dataProducerId: dataProducer.id,
                   dataProducerType: type,
@@ -103,16 +125,12 @@ const useDataProducers = ({
    }
 
    //If data producer closes without producer transport closing
-   const signalDataProducerClosed = ({
-      dataProducerType,
-      dataProducerId = null,
-   }: DataProducerInput) => {
+   const signalDataProducerClosed = (dataProducerId: string) => {
       socket.emit("dataProducerClosed", {
          userMeta,
          roomId,
          dataProducerId,
       })
-      removeDataProducer({ dataProducerType, dataProducerId })
    }
    return { dataProducerContainers, createDataProducer }
 }

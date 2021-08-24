@@ -25,6 +25,8 @@ import fs from "fs"
 import path from "path"
 import consumeExistingDataProducers from "./helpers/socket/consumeExistingDataProducers"
 import debugm from "debug"
+import dataProducerClosed from "./helpers/socket/dataProducerClosed"
+import dataConsumerClosed from "./helpers/socket/dataConsumerClosed"
 const debug = debugm("app:main")
 
 const privateKey = fs.readFileSync(
@@ -68,6 +70,8 @@ const main = async () => {
       addConsumer({ socket, roomFactory })
       producerClosed({ socket, roomFactory })
       consumerClosed({ socket, roomFactory })
+      dataProducerClosed({ socket, roomFactory })
+      dataConsumerClosed({ socket, roomFactory })
       consumeExistingProducers({ socket, roomFactory })
       consumeExistingDataProducers({ socket, roomFactory })
 

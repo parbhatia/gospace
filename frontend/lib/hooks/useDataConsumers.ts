@@ -39,12 +39,22 @@ const useDataConsumers = ({
    const initDataConsume = async ({
       peerId,
       dataProducerId,
+      appData,
    }: {
       peerId: string
       dataProducerId: string
+      appData: any
    }) => {
       try {
-         await createDataConsumer({ type: "any", dataProducerId })
+         const newDataConsumerContainer = await createDataConsumer({
+            type: "any",
+            dataProducerId,
+            appData,
+         })
+         setDataConsumerContainers((oldContainers) => [
+            ...oldContainers,
+            newDataConsumerContainer,
+         ])
       } catch (err) {
          //Show failed to consume data from new data producer message
          console.error(err)
@@ -54,10 +64,15 @@ const useDataConsumers = ({
    const createDataConsumer = async ({
       type,
       dataProducerId,
+      appData,
    }: {
       type: DataProducerOrConsumerType
       dataProducerId: string
-   }) =>
+      appData: any
+   }): Promise<{
+      dataConsumer: DataConsumer
+      type: DataProducerOrConsumerType
+   }> =>
       new Promise(async (resolve, reject) => {
          let transport: Transport
          if (!consumerTransport) {
@@ -77,6 +92,7 @@ const useDataConsumers = ({
                roomId,
                transportId: transport!.id,
                dataProducerId,
+               appData,
             },
             async (response: any) => {
                if (response.Status !== "success") {
@@ -90,6 +106,7 @@ const useDataConsumers = ({
                   label,
                   protocol,
                   dataProducerId,
+                  appData,
                }: DataConsumerOptions = response.newConsumerParams
                const dataConsumer = await transport.consumeData({
                   id,
@@ -97,6 +114,7 @@ const useDataConsumers = ({
                   sctpStreamParameters,
                   label,
                   protocol,
+                  appData,
                })
 
                //data consumer will close automatically, since transport closed
@@ -110,6 +128,7 @@ const useDataConsumers = ({
                })
 
                dataConsumer.on("close", () => {
+                  signalDataConsumerClosed(dataConsumer.id)
                   removeDataConsumer({
                      dataConsumerType: type,
                      dataConsumerId: dataConsumer.id,
@@ -130,6 +149,7 @@ const useDataConsumers = ({
                   console.log(
                      "Data Consumer has been observed closed in data producer",
                   )
+                  signalDataConsumerClosed(dataConsumer.id)
                   removeDataConsumer({
                      dataConsumerType: type,
                      dataConsumerId: dataConsumer.id,
@@ -140,11 +160,8 @@ const useDataConsumers = ({
                   dataConsumer,
                   type,
                }
-               setDataConsumerContainers((oldContainers) => [
-                  ...oldContainers,
-                  newDataConsumerContainer,
-               ])
-               resolve(dataConsumer)
+
+               resolve(newDataConsumerContainer)
             },
          )
       })
@@ -156,11 +173,20 @@ const useDataConsumers = ({
          // console.log(
          //    `Client ${userMeta.name} received close consumer request from ${senderMeta.name}`,
          // )
-         //use "" for dataConsumerName, since server only sends us an id
+
          removeDataConsumer({ dataConsumerType: "any", dataConsumerId: id })
       },
       [dataConsumerContainers],
    )
+
+   //Incase Consumer closes without consumer transport being closed
+   const signalDataConsumerClosed = (dataConsumerId: string) => {
+      socket.emit("dataConsumerClosed", {
+         userMeta,
+         roomId,
+         dataConsumerId,
+      })
+   }
 
    const removeDataConsumer = ({
       dataConsumerType,

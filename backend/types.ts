@@ -29,6 +29,7 @@ export interface ConsumeDataConsumerParams {
    sctpStreamParameters: SctpStreamParameters | undefined
    label: string
    protocol: string
+   appData: any
 }
 
 export interface WebRtcTransportParams {

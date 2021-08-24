@@ -4,7 +4,7 @@ import { Transport } from "mediasoup-client/lib/Transport"
 import { useCallback, useState } from "react"
 import { Socket } from "socket.io-client"
 import createMediaStreamFromTrack from "../helpers/createMediaStreamFromTrack"
-import { ConsumeServerConsumeParams } from "../types"
+import { ConsumeServerConsumeParams, TransportDataType } from "../types"
 import { UserMeta } from "../types"
 
 const useConsumers = ({
@@ -34,16 +34,19 @@ const useConsumers = ({
       peerId,
       peerName,
       producerId,
+      appData,
    }: {
       peerId: string
       peerName: string
       producerId: string
+      appData: any
    }) => {
       try {
          const newConsumerContainer = await createConsumer({
             peerId,
             peerName,
             producerId,
+            appData,
          })
 
          setConsumerContainers((prevState) => [
@@ -60,10 +63,12 @@ const useConsumers = ({
       peerId,
       peerName,
       producerId,
+      appData,
    }: {
       peerId: string
       peerName: string
       producerId: string
+      appData: any
    }): Promise<{
       mediaStream: MediaStream
       consumer: Consumer
@@ -76,7 +81,10 @@ const useConsumers = ({
             const newConsumerTransport = await initializeConsumerTransport()
             if (newConsumerTransport) {
                transport = newConsumerTransport
-            } else reject("Consumer transport not initialized")
+            } else {
+               reject("Consumer transport not initialized")
+               return
+            }
          } else if (!mediaSoupDevice) {
             reject("Mediasoup device does not exist")
          } else {
@@ -92,7 +100,7 @@ const useConsumers = ({
                transportId: transport!.id,
                producerId,
                rtpCapabilities,
-               appData: {},
+               appData: appData,
                paused: false,
             },
             async (response: any) => {
@@ -130,10 +138,12 @@ const useConsumers = ({
                })
 
                consumer.on("close", () => {
+                  signalConsumerClosed(consumer.id)
                   removeConsumer(consumer.id)
                })
 
                consumer.observer.on("close", () => {
+                  signalConsumerClosed(consumer.id)
                   removeConsumer(consumer.id)
                })
 
@@ -162,7 +172,6 @@ const useConsumers = ({
          roomId,
          consumerId,
       })
-      removeConsumer(consumerId)
    }
 
    // handles remove consumer request from backend

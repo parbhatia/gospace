@@ -14,11 +14,13 @@ export default ({
          roomId,
          transportId,
          dataProducerId,
+         appData,
       }: {
          userMeta: UserMeta
          roomId: string
          transportId: string
          dataProducerId: string
+         appData: any
       } = msg
       console.log(
          `Peer ${userMeta.name} requests to add data consumer with transportId ${transportId} and producerId ${dataProducerId}`,
@@ -31,6 +33,7 @@ export default ({
                .addDataConsumer({
                   id: transportId,
                   dataProducerId,
+                  appData,
                })
             if (!newConsumerParams) {
                throw new Error("Unable to add data consumer")

@@ -1,6 +1,7 @@
 import { Transport } from "mediasoup-client/lib/Transport"
 import { useEffect, useState } from "react"
 import { Socket } from "socket.io-client"
+import { DataProducer } from "mediasoup-client/lib/DataProducer"
 
 const useDebug = ({
    socket,
@@ -28,14 +29,17 @@ const useDebug = ({
          consumerTransport: {
             id: consumerTransport?.id,
             closed: consumerTransport?.closed,
+            appData: consumerTransport?.appData,
          },
          producerTransport: {
-            id: consumerTransport?.id,
-            closed: consumerTransport?.closed,
+            id: producerTransport?.id,
+            closed: producerTransport?.closed,
+            appData: producerTransport?.appData,
          },
          producerContainers: producerContainers.map((c) => ({
             id: c.producer.id,
             paused: c.producer.paused,
+            appData: c.producer.appData,
             mediaStream: {
                id: c.mediaStream.id,
                inactive: c.mediaStream.inactive,
@@ -45,6 +49,7 @@ const useDebug = ({
          consumerContainers: consumerContainers.map((c) => ({
             id: c.consumer.id,
             paused: c.consumer.paused,
+            appData: c.consumer.appData,
             mediaStream: {
                id: c.mediaStream.id,
                inactive: c.mediaStream.inactive,
@@ -56,12 +61,20 @@ const useDebug = ({
             type: c.type,
             paused: c.dataProducer.paused,
             closed: c.dataProducer.closed,
+            appData: c.dataProducer.appData,
+            bufferedAmount: c.dataProducer.bufferedAmount,
+            readyState: c.dataProducer.readyState,
+            bufferedAmountLowThreshold:
+               c.dataProducer.bufferedAmountLowThreshold,
          })),
          dataConsumerContainers: dataConsumerContainers.map((c) => ({
             id: c.dataConsumer.id,
             type: c.type,
             paused: c.dataConsumer.paused,
             closed: c.dataConsumer.closed,
+            readyState: c.dataConsumer.readyState,
+            appData: c.dataConsumer.appData,
+            binaryType: c.dataConsumer.binaryType,
          })),
       },
       null,

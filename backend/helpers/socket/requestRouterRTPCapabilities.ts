@@ -41,10 +41,15 @@ export default ({
             if (room.hasPeer(userMeta)) {
                //Peer exists, is probably attempting reconnection
                //Remove peer from room, but don't delete room if empty
-               await room.removePeer(userMeta, false)
-               //Add peer back again
-               const newPeer = await room.createPeer({ userMeta, socket })
+               await room.getPeer(userMeta).reinitializePeerConnection()
             }
+            // if (room.hasPeer(userMeta)) {
+            //    //Peer exists, is probably attempting reconnection
+            //    //Remove peer from room, but don't delete room if empty
+            //    await room.removePeer(userMeta, false)
+            //    //Add peer back again
+            //    const newPeer = await room.createPeer({ userMeta, socket })
+            // }
             //Join socket to new room
             socket.join(roomId)
             callback({

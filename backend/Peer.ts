@@ -206,6 +206,24 @@ class Peer {
       //tell everyone in the room that consumer has closed, on the server side, so they should stop listening to this consumer
       // this.room.removeConsumers({ userMeta: this.userMeta, producerId })
    }
+   //Client sends message for data producer closed, close data producer here in server
+   handleDataProducerClosed = ({
+      dataProducerId,
+   }: {
+      dataProducerId: string
+   }) => {
+      this.getDataProducer({ id: dataProducerId })?.close()
+      this.removeDataProducer({ id: dataProducerId })
+   }
+   //Client sends message for data consumer closed, close data consumer here in server
+   handleDataConsumerClosed = ({
+      dataConsumerId,
+   }: {
+      dataConsumerId: string
+   }) => {
+      this.getDataConsumer({ id: dataConsumerId })?.close()
+      this.removeDataConsumer({ id: dataConsumerId })
+   }
    //Client sends message for consumer closed, close consumer here in server
    handleConsumerClosed = ({ consumerId }: { consumerId: string }) => {
       this.getConsumer({ id: consumerId })?.close()
@@ -241,16 +259,19 @@ class Peer {
       id,
       rtpParameters,
       kind,
+      appData,
    }: {
       id: string
       rtpParameters: RtpParameters
       kind: MediaKind
+      appData: any
    }): Promise<Producer | null> => {
       if (!this.getProducer({ id }) && this.transportExists({ id })) {
          const transportToReference = this.getTransport({ id })
          const newProducer: Producer = await transportToReference!.produce({
             kind,
             rtpParameters,
+            appData,
          })
          // Note: we've created a new producer transport using given webRtc transport
          // This new transport has a different id
@@ -264,7 +285,11 @@ class Peer {
          })
          this.producers.set(newId, newProducer)
          //notify peers of my producing
-         this.broadcastProducerToRoom({ producerId: newId })
+         this.broadcastProducerToRoom({
+            producerId: newId,
+            appData,
+            // appData: newProducer.appData,
+         })
          return newProducer
       } else {
          return null
@@ -358,11 +383,13 @@ class Peer {
       sctpStreamParameters,
       label,
       protocol,
+      appData,
    }: {
       id: string
       sctpStreamParameters: SctpStreamParameters
       label: string
       protocol: string
+      appData: any
    }): Promise<DataProducer | null> => {
       if (!this.getProducer({ id }) && this.transportExists({ id })) {
          const transportToReference = this.getTransport({ id })
@@ -371,20 +398,34 @@ class Peer {
                sctpStreamParameters,
                label,
                protocol,
+               appData,
             })
          newDataProducer.on("transportclose", () => {
+            this.removeDataProducer({ id: newDataProducer.id })
+         })
+         newDataProducer.on("close", () => {
+            debug("Data producer has been observed closed", newDataProducer.id)
             this.removeDataProducer({ id: newDataProducer.id })
          })
          const newId = newDataProducer.id
          this.dataProducers.set(newId, newDataProducer)
          //notify peers of my join as new data producer
-         this.broadcastDataProducerToRoom({ dataProducerId: newId })
+         this.broadcastDataProducerToRoom({
+            dataProducerId: newId,
+            appData: newDataProducer.appData,
+         })
          return newDataProducer
       } else {
          return null
       }
    }
-   broadcastProducerToRoom = ({ producerId }: { producerId: string }) => {
+   broadcastProducerToRoom = ({
+      producerId,
+      appData,
+   }: {
+      producerId: string
+      appData: any
+   }) => {
       // Notify all OTHER peers in the room to consume producer
       // debug(
       //    `Peer ${this.userMeta.name} is broadcasting its arrival of new producer`,
@@ -395,6 +436,7 @@ class Peer {
             peerId: this.userMeta.id,
             peerName: this.userMeta.name,
             producerId,
+            appData,
          })
       }
    }
@@ -416,6 +458,7 @@ class Peer {
                peerId: this.userMeta.id,
                peerName: this.userMeta.name,
                producerId: producer.id,
+               appData: producer.appData,
             })
          }
       })
@@ -438,14 +481,17 @@ class Peer {
                peerId: this.userMeta.id,
                peerName: this.userMeta.name,
                dataProducerId: dataProducer.id,
+               appData: dataProducer.appData,
             })
          }
       })
    }
    broadcastDataProducerToRoom = ({
       dataProducerId,
+      appData,
    }: {
       dataProducerId: string
+      appData: any
    }) => {
       // debug(
       //    `Peer ${this.userMeta.name} is broadcasting its arrival of new data producer`,
@@ -455,21 +501,25 @@ class Peer {
          this.socket.to(this.roomId).emit("newDataProducer", {
             peerId: this.userMeta.name,
             dataProducerId,
+            appData,
          })
       }
    }
    addDataConsumer = async ({
       id,
       dataProducerId,
+      appData,
    }: {
       id: string
       dataProducerId: string
+      appData: any
    }): Promise<ConsumeDataConsumerParams | null> => {
       if (this.transportExists({ id })) {
          const transportToReference = this.getTransport({ id })
 
          const newDataConsumer = await transportToReference!.consumeData({
             dataProducerId,
+            appData,
          })
          newDataConsumer.on("transportclose", () => {
             debug(
@@ -483,6 +533,10 @@ class Peer {
             )
             this.removeDataConsumer({ id: newDataConsumer.id })
          })
+         newDataConsumer.on("close", () => {
+            debug("Data consumer has been observed closed", newDataConsumer.id)
+            this.removeDataConsumer({ id: newDataConsumer.id })
+         })
 
          //add data consumer to data consumers collection
          this.dataConsumers.set(newDataConsumer.id, newDataConsumer)
@@ -492,6 +546,7 @@ class Peer {
             sctpStreamParameters: newDataConsumer.sctpStreamParameters,
             label: newDataConsumer.label,
             protocol: newDataConsumer.protocol,
+            appData: newDataConsumer.appData,
          }
       } else {
          debug(
@@ -507,6 +562,15 @@ class Peer {
       this.transports.forEach((t) => t.close())
    }
 
+   //Incase peer tries to reconnect
+   reinitializePeerConnection = async () => {
+      this.transports = new Map()
+      this.producers = new Map()
+      this.consumers = new Map()
+      this.dataProducers = new Map()
+      this.dataConsumers = new Map()
+   }
+
    debug = async () => {
       debug("")
       if (this.transports.size === 0) debug("No Transports")
@@ -518,25 +582,33 @@ class Peer {
       if (this.producers.size === 0) debug("No Producers")
       else {
          debug("Producers")
-         this.producers.forEach((t, tId) => debug(tId))
+         this.producers.forEach((t, tId) =>
+            debug({ id: tId, appData: t.appData }),
+         )
       }
       debug("")
       if (this.consumers.size === 0) debug("No Consumers")
       else {
          debug("Consumers")
-         this.consumers.forEach((t, tId) => debug(tId))
+         this.consumers.forEach((t, tId) =>
+            debug({ id: tId, appData: t.appData }),
+         )
       }
       debug("")
       if (this.dataProducers.size === 0) debug("No Data Producers")
       else {
          debug("Data Producers")
-         this.dataProducers.forEach((t, tId) => debug(tId))
+         this.dataProducers.forEach((t, tId) =>
+            debug({ id: tId, appData: t.appData, closed: t.closed }),
+         )
       }
       debug("")
       if (this.dataConsumers.size === 0) debug("No Data Consumers")
       else {
          debug("Data Consumers")
-         this.dataConsumers.forEach((t, tId) => debug(tId))
+         this.dataConsumers.forEach((t, tId) =>
+            debug({ id: tId, appData: t.appData }),
+         )
       }
       debug("")
    }

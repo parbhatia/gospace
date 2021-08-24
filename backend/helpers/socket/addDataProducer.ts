@@ -17,6 +17,7 @@ export default ({
          sctpStreamParameters,
          label,
          protocol,
+         appData,
       }: {
          userMeta: UserMeta
          roomId: string
@@ -24,6 +25,7 @@ export default ({
          sctpStreamParameters: SctpStreamParameters
          label: string
          protocol: string
+         appData: any
       } = msg
       console.log(
          `Peer ${userMeta.name} requests to add data producer with transportId ${transportId}`,
@@ -38,6 +40,7 @@ export default ({
                   sctpStreamParameters,
                   label,
                   protocol,
+                  appData,
                })
             if (!newProducer) {
                throw new Error("Invalid producer")

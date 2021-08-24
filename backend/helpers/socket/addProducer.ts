@@ -38,6 +38,7 @@ export default ({
                   id: transportId,
                   rtpParameters,
                   kind,
+                  appData,
                })
             if (!newProducer) {
                throw new Error("Invalid producer")

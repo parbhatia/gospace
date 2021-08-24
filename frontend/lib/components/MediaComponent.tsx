@@ -31,11 +31,7 @@ const MediaComponent = ({
       }
    }, [])
    return (
-      <div
-         className={`w-full ${
-            paused ? "bg-black animate-pulse" : "border-2"
-         } border-red-600`}
-      >
+      <div className={`w-full ${paused ? " animate-pulse" : ""} `}>
          {/* <img
             alt="team"
             className="flex-shrink-0 object-cover object-center w-full h-56 mb-4 rounded-lg"

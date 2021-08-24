@@ -19,6 +19,6 @@ export default ({
          const roomOfPeer = roomFactory.getRoom(roomId)!
          await roomOfPeer.getPeer(userMeta).handleConsumerClosed({ consumerId })
       }
-      console.log(`Peer ${userMeta.name}'s producer successfully removed`)
+      console.log(`Peer ${userMeta.name}'s consumer successfully removed`)
    })
 }

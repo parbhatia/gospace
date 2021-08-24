@@ -124,6 +124,7 @@ const useProducerTransport = ({
                      sctpStreamParameters: parameters.sctpStreamParameters,
                      label: parameters.label,
                      protocol: parameters.protocol,
+                     appData: parameters.appData,
                   },
                   (response: any) => {
                      if (response.Status === "success") {

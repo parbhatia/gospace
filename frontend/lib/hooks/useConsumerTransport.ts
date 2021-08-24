@@ -21,6 +21,19 @@ const useConsumerTransport = ({
       null,
    )
 
+   const closeConsumerTransport = () => {
+      if (consumerTransport && !consumerTransport.closed) {
+         consumerTransport.close()
+         setConsumerTransport(null)
+         socket.emit("transportClosed", {
+            userMeta,
+            roomId,
+            transportId: consumerTransport.id,
+            type: "consumer",
+         })
+      }
+   }
+
    const initializeConsumerTransport = async (): Promise<Transport | null> => {
       if (device) {
          const newTransport = await requestCreateWebRtcTransport({
@@ -101,19 +114,6 @@ const useConsumerTransport = ({
          })
       }
    }, [consumerTransport, socket])
-
-   const closeConsumerTransport = () => {
-      if (consumerTransport && !consumerTransport.closed) {
-         consumerTransport.close()
-         setConsumerTransport(null)
-         socket.emit("transportClosed", {
-            userMeta,
-            roomId,
-            transportId: consumerTransport.id,
-            type: "consumer",
-         })
-      }
-   }
 
    return {
       consumerTransport,

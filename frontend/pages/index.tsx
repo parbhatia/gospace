@@ -89,13 +89,18 @@ export default function Home() {
    const { handleNewDataProducer, handleNewProducer } = useHandleNewPeers({
       initDataConsume,
       initConsumeMedia,
+      producerTransport,
+      consumerTransport,
    })
 
    //Start producing as soon as we establish a transport for producing
    useEffect(() => {
       if (producerTransport) {
          if (checkDeviceProduceCapability("video")) {
-            createProducer(VIDEO_CONSTRAINTS)
+            createProducer({
+               mediaConstraints: VIDEO_CONSTRAINTS,
+               transportDataType: "video",
+            })
          }
          openRoomCanvas()
       }
@@ -206,7 +211,10 @@ export default function Home() {
                      label="Camera On"
                      onClick={async () => {
                         if (checkDeviceProduceCapability("video")) {
-                           await createProducer(VIDEO_CONSTRAINTS)
+                           await createProducer({
+                              mediaConstraints: VIDEO_CONSTRAINTS,
+                              transportDataType: "video",
+                           })
                         }
                      }}
                   />
@@ -214,7 +222,10 @@ export default function Home() {
                      label="Audio On"
                      onClick={async () => {
                         if (checkDeviceProduceCapability("audio")) {
-                           await createProducer(AUDIO_CONSTRAINTS)
+                           await createProducer({
+                              mediaConstraints: AUDIO_CONSTRAINTS,
+                              transportDataType: "audio",
+                           })
                         }
                      }}
                   />
@@ -267,6 +278,14 @@ export default function Home() {
                            onClick={() => {
                               producerContainers.forEach((p) =>
                                  p.producer.close(),
+                              )
+                           }}
+                        />
+                        <Button
+                           label="Disconnect Producers"
+                           onClick={() => {
+                              consumerContainers.forEach((p) =>
+                                 p.consumer.close(),
                               )
                            }}
                         />

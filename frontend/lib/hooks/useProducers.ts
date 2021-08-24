@@ -3,7 +3,7 @@ import { Transport } from "mediasoup-client/lib/Transport"
 import { useState } from "react"
 import { Socket } from "socket.io-client"
 import createMediaStream from "../helpers/createMediaStream"
-import { UserMeta } from "../types"
+import { TransportDataType, UserMeta } from "../types"
 
 const useProducers = ({
    userMeta,
@@ -23,7 +23,13 @@ const useProducers = ({
    const [producerContainers, setProducerContainers] = useState<
       Array<{ mediaStream: MediaStream; producer: Producer; name: string }>
    >([])
-   const createProducer = async (mediaConstraints: MediaStreamConstraints) => {
+   const createProducer = async ({
+      mediaConstraints,
+      transportDataType,
+   }: {
+      mediaConstraints: MediaStreamConstraints
+      transportDataType: TransportDataType
+   }) => {
       return new Promise(async (resolve, reject) => {
          try {
             let transport: Transport
@@ -43,6 +49,10 @@ const useProducers = ({
                : stream.getAudioTracks()[0]
 
             const producer = await transport!.produce({
+               appData: {
+                  //specify which type of producer we are using
+                  dataType: transportDataType,
+               },
                track,
             })
             producer.on("trackended", () => {
@@ -61,10 +71,12 @@ const useProducers = ({
 
             producer.on("close", () => {
                console.log("Producer has closed")
+               signalProducerClosed(producer.id)
                removeProducer(producer.id)
             })
             producer.observer.on("close", () => {
                console.log("Producer has been observed closed")
+               signalProducerClosed(producer.id)
                removeProducer(producer.id)
             })
 
@@ -97,7 +109,6 @@ const useProducers = ({
          roomId,
          producerId,
       })
-      removeProducer(producerId)
    }
    return {
       producerContainers,

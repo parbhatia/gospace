@@ -9,6 +9,8 @@ export interface ConsumeServerConsumeParams {
 
 export type DataProducerOrConsumerType = "canvas" | "text" | "any"
 
+export type TransportDataType = "video" | "audio"
+
 export interface DataConsumerInput {
    dataConsumerType: DataProducerOrConsumerType
    dataConsumerId: string | null
