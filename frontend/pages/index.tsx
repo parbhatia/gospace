@@ -17,15 +17,16 @@ import useDebug from "../lib/hooks/useDebug"
 import useProducers from "../lib/hooks/useProducers"
 import { SocketContext } from "../lib/socket"
 import { compress, decompress } from "lz-string"
+import useMonitorRoom from "../lib/hooks/useMonitorRoom"
 
 export default function Home() {
    const socket = useContext(SocketContext)
    const [id] = useState(() => getRandomId().toString())
+   const { roomInfo, handleRoomUpdate } = useMonitorRoom() //use this hook one level higher
    const [userMeta, setUserMeta] = useState({
       id: id,
       name: id,
    })
-   const [roomId, setRoomId] = useState("my-room")
    const [loadingCanvasData, setLoadingCanvasData] = useState(false)
    const [debugMode, setDebugMode] = useState(false)
    const [errors, setErrors] = useState({})
@@ -40,12 +41,12 @@ export default function Home() {
       connectionStatus,
       connectToRoom,
       errors: mediaSoupErrors,
-   } = useConnectToMediasoup({ userMeta, roomId, socket })
+   } = useConnectToMediasoup({ userMeta, roomId: roomInfo.id, socket })
    const canvasRef = useRef(null)
    const { consumerContainers, initConsumeMedia, handleCloseConsumer } =
       useConsumers({
          userMeta,
-         roomId,
+         roomId: roomInfo.id,
          socket,
          consumerTransport,
          mediaSoupDevice,
@@ -54,7 +55,7 @@ export default function Home() {
    const { producerContainers, createProducer, handleNewProducer } =
       useProducers({
          userMeta,
-         roomId,
+         roomId: roomInfo.id,
          socket,
          producerTransport,
          initializeProducerTransport,
@@ -115,7 +116,7 @@ export default function Home() {
             "addDataConsumer",
             {
                userMeta,
-               roomId,
+               roomId: roomInfo.id,
                transportId: transport!.id,
                dataProducerId,
             },
@@ -246,6 +247,7 @@ export default function Home() {
          socket.on("newDataProducer", handleNewDataProducer)
          socket.on("newProducer", handleNewProducer)
          socket.on("closeConsumer", handleCloseConsumer)
+         socket.on("roomUpdate", handleRoomUpdate)
       }
       return () => {
          if (socket) {
@@ -254,6 +256,7 @@ export default function Home() {
             socket.off("newDataProducer", handleNewDataProducer)
             socket.off("newProducer", handleNewProducer)
             socket.off("closeConsumer", handleCloseConsumer)
+            socket.off("roomUpdate", handleRoomUpdate)
          }
       }
    }, [
@@ -269,7 +272,7 @@ export default function Home() {
       closeConsumerTransport()
       closeProducerTransport()
       // disconnect socket and signal to remove peer from backend
-      socket.emit("removePeer", { userMeta, roomId })
+      socket.emit("removePeer", { userMeta, roomId: roomInfo.id })
       socket.disconnect()
    }
 
@@ -309,7 +312,15 @@ export default function Home() {
    return (
       <SocketContext.Provider value={socket}>
          <main className="p-2 m-2">
-            <StatusComponent connectionStatus={connectionStatus} />
+            <div className="flex flex-col w-full mb-20 text-center">
+               <h1 className="p-1 text-2xl font-medium text-gray-900 title-font">
+                  {roomInfo.name}
+               </h1>
+               <p className="p-1 mx-auto mb-2 text-base leading-relaxed lg:w-2/3">
+                  {roomInfo.totalPeers} peers
+               </p>
+               <StatusComponent connectionStatus={connectionStatus} />
+            </div>
             <div>
                <div className="flex flex-wrap justify-center">
                   <Button
@@ -351,7 +362,7 @@ export default function Home() {
                      label="Stats"
                      onClick={() => {
                         debug()
-                        socket.emit("debug", { roomId, userMeta })
+                        socket.emit("debug", { roomId: roomInfo.id, userMeta })
                      }}
                   />
 
@@ -396,7 +407,7 @@ export default function Home() {
                            onClick={() => {
                               if (consumerTransport)
                                  socket.emit("consumeExistingProducers", {
-                                    roomId,
+                                    roomId: roomInfo.id,
                                     userMeta,
                                  })
                            }}
@@ -425,14 +436,7 @@ export default function Home() {
                         </div>
                      ))}
                   </div>
-                  <div className="flex flex-col w-full mb-20 text-center">
-                     <h1 className="mb-4 text-2xl font-medium text-gray-900 title-font">
-                        Peers
-                     </h1>
-                     <p className="mx-auto text-base leading-relaxed lg:w-2/3">
-                        Welcome to the room!
-                     </p>
-                  </div>
+
                   <div></div>
                   <div className="container mx-auto space-y-2 lg:space-y-0 lg:gap-2 lg:grid lg:grid-cols-3">
                      {consumerContainers.map((c, i) => (

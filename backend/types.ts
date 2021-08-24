@@ -12,6 +12,10 @@ export interface UserMeta {
    name: string
 }
 
+export interface RoomInfo {
+   totalPeers: number
+}
+
 export interface ConsumeServerConsumeParams {
    id: string
    kind: "audio" | "video"

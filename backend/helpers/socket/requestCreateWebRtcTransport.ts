@@ -36,6 +36,7 @@ export default ({
          //    `Peer ${userMeta.name} successfully received WebRtc transport connection`,
          // )
          //send created WebRtc transport's params to client, so client can use the params to create a Transport for communication
+
          callback({
             Status: "success",
             transportParams: params,

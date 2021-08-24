@@ -11,9 +11,9 @@ import downloadImage from "../helpers/downloadImage"
 import ToolButton from "./CanvasToolButton"
 
 const DEFAULT_CANVAS_BRUSH_COLOR = "#191919"
-const DEFAULT_CANVAS_GRID_COLOR = "rgba(150,150,150,0.17)"
+const DEFAULT_CANVAS_GRID_COLOR = "#ffffff"
 const DEFAULT_BRUSH_SIZE = 3
-const DEFAULT_ERASER_SIZE = 8
+const DEFAULT_ERASER_SIZE = 15
 const MAX_BRUSH_SIZE = 20
 const MIN_BRUSH_SIZE = 20
 
@@ -30,6 +30,7 @@ const Canvas = ({ canvasRef, onChange }) => {
    const handlePencilPick = () => {
       setToolMode("brush")
       setColor(prevColor) //restore brush color
+      setPrevColor(color)
    }
    const handleEraserPick = () => {
       setToolMode("eraser")
@@ -78,7 +79,7 @@ const Canvas = ({ canvasRef, onChange }) => {
                saveData={null}
                hideInterface={false}
                brushRadius={toolMode === "brush" ? brushRadius : eraserRadius}
-               catenaryColor="#0a0302"
+               // catenaryColor="#0a0302"
                gridColor={DEFAULT_CANVAS_GRID_COLOR}
                canvasWidth={1000}
                canvasHeight={1000}

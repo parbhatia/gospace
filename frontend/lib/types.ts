@@ -7,6 +7,11 @@ export interface ConsumeServerConsumeParams {
    appData: any
 }
 
+export interface RoomInfo {
+   totalPeers: number
+   name: string
+   id: string
+}
 export interface UserMeta {
    id: string
    name: string
