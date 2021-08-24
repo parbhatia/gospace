@@ -13,9 +13,9 @@ import ToolButton from "./CanvasToolButton"
 const DEFAULT_CANVAS_BRUSH_COLOR = "#191919"
 const DEFAULT_CANVAS_GRID_COLOR = "#ffffff"
 const DEFAULT_BRUSH_SIZE = 3
-const DEFAULT_ERASER_SIZE = 15
-const MAX_BRUSH_SIZE = 20
-const MIN_BRUSH_SIZE = 20
+const DEFAULT_ERASER_SIZE = 35
+const MAX_BRUSH_SIZE = 60
+const MIN_BRUSH_SIZE = 1
 
 const Canvas = ({ canvasRef, onChange }) => {
    const [prevColor, setPrevColor] = useState(DEFAULT_CANVAS_BRUSH_COLOR)

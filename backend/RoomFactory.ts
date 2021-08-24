@@ -2,6 +2,8 @@ import Room from "./Room"
 import WorkerFactory from "./WorkerFactory"
 import { Router, Worker, RtpCodecCapability } from "mediasoup/lib/types"
 import config from "./config/mediasoup"
+import debugm from "debug"
+const debug = debugm("app:RoomFactory")
 
 // const uniqueRoomIdGenerator = nanoid.customAlphabet(
 //    "ABCDEFGHIJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz123456789",
@@ -25,7 +27,7 @@ class RoomFactory {
    removeRoom = async (roomId: string) => {
       if (this.roomExists(roomId)) {
          await this.getRoom(roomId)?.removeAllPeers()
-         console.log("Removing room", roomId)
+         debug("Removing room", roomId)
          this.rooms.delete(roomId)
          this.roomToWorker.delete(roomId)
       }
@@ -62,22 +64,22 @@ class RoomFactory {
          this.rooms.set(newRoom.getId(), newRoom)
          return newRoom
       } catch (e) {
-         console.error("Could not create new room")
+         debug("Could not create new room")
       }
    }
    createDefaultRooms = async (WorkerFactory: WorkerFactory) => {}
    debug = async ({ roomId }: { roomId: string }) => {
-      console.log("Worker stats:")
+      debug("Worker stats:")
       if (this.roomExists(roomId)) {
          const workerPID = this.getRoomWorkerPid(roomId)!
          const resourceUsage = await this.workerFactory.getWorkerResourceUsage({
             workerPID,
          })
          if (resourceUsage) {
-            console.log(resourceUsage)
+            debug(resourceUsage)
          }
       }
-      console.log("")
+      debug("")
    }
 }
 

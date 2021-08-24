@@ -1,10 +1,5 @@
-import {
-   DataConsumer,
-   DataConsumerOptions,
-} from "mediasoup-client/lib/DataConsumer"
 import { DataProducer } from "mediasoup-client/lib/DataProducer"
-import { Transport } from "mediasoup-client/lib/Transport"
-import { useCallback, useContext, useEffect, useRef, useState } from "react"
+import { useCallback, useContext, useEffect, useState } from "react"
 import { AUDIO_CONSTRAINTS, VIDEO_CONSTRAINTS } from "../config"
 import Button from "../lib/components/Button"
 import Canvas from "../lib/components/Canvas"
@@ -13,21 +8,24 @@ import StatusComponent from "../lib/components/StatusComponent"
 import getRandomId from "../lib/helpers/getRandomId"
 import useConnectToMediasoup from "../lib/hooks/useConnectToMediasoup"
 import useConsumers from "../lib/hooks/useConsumers"
+import useDataConsumers from "../lib/hooks/useDataConsumers"
+import useDataProducers from "../lib/hooks/useDataProducers"
 import useDebug from "../lib/hooks/useDebug"
-import useProducers from "../lib/hooks/useProducers"
-import { SocketContext } from "../lib/socket"
-import { compress, decompress } from "lz-string"
+import useHandleNewPeers from "../lib/hooks/useHandleNewPeers"
 import useMonitorRoom from "../lib/hooks/useMonitorRoom"
+import useProducers from "../lib/hooks/useProducers"
+import useRoomCanvas from "../lib/hooks/useRoomCanvas"
+import { SocketContext } from "../lib/socket"
 
 export default function Home() {
    const socket = useContext(SocketContext)
    const [id] = useState(() => getRandomId().toString())
+   const [toggleRoomCanvas, setToggleRoomCanvas] = useState(false)
    const { roomInfo, handleRoomUpdate } = useMonitorRoom() //use this hook one level higher
    const [userMeta, setUserMeta] = useState({
       id: id,
       name: id,
    })
-   const [loadingCanvasData, setLoadingCanvasData] = useState(false)
    const [debugMode, setDebugMode] = useState(false)
    const [errors, setErrors] = useState({})
    const {
@@ -42,7 +40,7 @@ export default function Home() {
       connectToRoom,
       errors: mediaSoupErrors,
    } = useConnectToMediasoup({ userMeta, roomId: roomInfo.id, socket })
-   const canvasRef = useRef(null)
+
    const { consumerContainers, initConsumeMedia, handleCloseConsumer } =
       useConsumers({
          userMeta,
@@ -52,20 +50,46 @@ export default function Home() {
          mediaSoupDevice,
          initializeConsumerTransport,
       })
-   const { producerContainers, createProducer, handleNewProducer } =
-      useProducers({
+   const { producerContainers, createProducer } = useProducers({
+      userMeta,
+      roomId: roomInfo.id,
+      socket,
+      producerTransport,
+      initializeProducerTransport,
+      closeProducerTransport,
+   })
+
+   const { dataProducerContainers, createDataProducer } = useDataProducers({
+      userMeta,
+      roomId: roomInfo.id,
+      socket,
+      producerTransport,
+      initializeProducerTransport,
+      closeProducerTransport,
+   })
+   const {
+      sendCanvasData,
+      openRoomCanvas,
+      canvasRef,
+      loadToCanvas,
+      toggleDisplayCanvas,
+   } = useRoomCanvas({ createDataProducer })
+
+   const { dataConsumerContainers, initDataConsume, handleCloseDataConsumer } =
+      useDataConsumers({
          userMeta,
          roomId: roomInfo.id,
          socket,
-         producerTransport,
-         initializeProducerTransport,
-         closeProducerTransport,
-         initConsumeMedia,
+         consumerTransport,
+         mediaSoupDevice,
+         initializeConsumerTransport,
+         loadToCanvas,
       })
 
-   const dataProducers = useRef<Array<DataProducer>>([])
-   const dataConsumers = useRef<Array<DataConsumer>>([])
-   const canvasDataProducer = useRef<DataProducer>()
+   const { handleNewDataProducer, handleNewProducer } = useHandleNewPeers({
+      initDataConsume,
+      initConsumeMedia,
+   })
 
    //Start producing as soon as we establish a transport for producing
    useEffect(() => {
@@ -73,105 +97,9 @@ export default function Home() {
          if (checkDeviceProduceCapability("video")) {
             createProducer(VIDEO_CONSTRAINTS)
          }
+         openRoomCanvas()
       }
    }, [producerTransport])
-
-   const createDataProducer = async () =>
-      new Promise(async (resolve, reject) => {
-         let transport: Transport
-         if (!producerTransport) {
-            const newProducerTransport = await initializeProducerTransport()
-            if (newProducerTransport) {
-               transport = newProducerTransport
-            } else reject("Produce transport not initialized")
-         } else {
-            transport = producerTransport
-         }
-         const newDataProducer = await transport!.produceData()
-
-         canvasDataProducer.current = newDataProducer
-
-         dataProducers.current.push(newDataProducer)
-         resolve(newDataProducer)
-      })
-
-   const createDataConsumer = async ({
-      dataProducerId,
-   }: {
-      dataProducerId: string
-   }) =>
-      new Promise(async (resolve, reject) => {
-         let transport: Transport
-         if (!consumerTransport) {
-            const newConsumerTransport = await initializeConsumerTransport()
-            if (newConsumerTransport) {
-               transport = newConsumerTransport
-            } else reject("Consumer transport not initialized")
-         } else if (!mediaSoupDevice) {
-            reject("Mediasoup device does not exist")
-         } else {
-            transport = consumerTransport
-         }
-         socket.emit(
-            "addDataConsumer",
-            {
-               userMeta,
-               roomId: roomInfo.id,
-               transportId: transport!.id,
-               dataProducerId,
-            },
-            async (response: any) => {
-               if (response.Status !== "success") {
-                  throw new Error(
-                     "Failed Data Producer connect : " + response.Error,
-                  )
-               }
-               const {
-                  id,
-                  sctpStreamParameters,
-                  label,
-                  protocol,
-                  dataProducerId,
-               }: DataConsumerOptions = response.newConsumerParams
-               const dataConsumer = await transport.consumeData({
-                  id,
-                  dataProducerId,
-                  sctpStreamParameters,
-                  label,
-                  protocol,
-               })
-               dataConsumer.on("message", async (data) => {
-                  //data is likely stringified json, might need to parse
-                  await loadToCanvas(data)
-                  // console.log("RECEIVED DATA MESSAGE", data)
-               })
-               dataConsumers.current.push(dataConsumer)
-            },
-         )
-      })
-
-   const loadToCanvas = async (rawData) => {
-      if (!canvasRef || !canvasRef.current) return null
-      const decompressedParsedCanvasData = decompress(JSON.parse(rawData))
-      setLoadingCanvasData(true)
-      canvasRef.current!.loadSaveData(decompressedParsedCanvasData, true) //2nd param is immediate loading
-      setLoadingCanvasData(false)
-   }
-
-   const initDataConsume = async ({
-      peerId,
-      dataProducerId,
-   }: {
-      peerId: string
-      dataProducerId: string
-   }) => {
-      try {
-         await createDataConsumer({ dataProducerId })
-      } catch (err) {
-         //Show failed to consume data from new data producer message
-         console.error(err)
-      }
-   }
 
    const checkDeviceProduceCapability = (kind: "audio" | "video"): boolean => {
       if (!mediaSoupDevice || !mediaSoupDevice.canProduce(kind)) {
@@ -181,55 +109,6 @@ export default function Home() {
       }
       return true
    }
-
-   //Sends raw data, or JSON stringified data via data producer
-   const sendData = async ({
-      dataProducer,
-      data,
-      sendRaw = false,
-   }: {
-      dataProducer: DataProducer | undefined
-      data: any
-      sendRaw: boolean
-   }) => {
-      if (dataProducer && !dataProducer.closed) {
-         if (sendRaw) {
-            await dataProducer.send(data)
-         } else {
-            await dataProducer.send(JSON.stringify(data))
-         }
-      }
-   }
-
-   const sendCanvasData = async () => {
-      if (loadingCanvasData || !canvasRef || !canvasRef.current) return null
-      const savedData = await canvasRef.current.getSaveData()
-      const compressedStringData = compress(savedData)
-      await sendData({
-         dataProducer: canvasDataProducer.current,
-         data: compressedStringData,
-         sendRaw: false,
-      })
-   }
-
-   const openRoomCanvas = async () => {
-      await createDataProducer()
-   }
-
-   //We handle not consuming our own producer in backend
-   const handleNewDataProducer = useCallback(
-      async (msg: any) => {
-         const {
-            peerId,
-            dataProducerId,
-         }: { peerId: string; dataProducerId: string } = msg
-         // console.log(
-         //    "Client received broadcast message for new data producer",
-         // )
-         await initDataConsume({ peerId, dataProducerId })
-      },
-      [initDataConsume],
-   )
 
    const socketConnect = useCallback(() => {
       console.log("Client connected", socket.id)
@@ -306,8 +185,8 @@ export default function Home() {
       producerTransport,
       producerContainers,
       consumerContainers,
-      dataConsumers,
-      dataProducers,
+      dataConsumerContainers,
+      dataProducerContainers,
    })
    return (
       <SocketContext.Provider value={socket}>
@@ -342,10 +221,11 @@ export default function Home() {
                   <Button
                      label="Open Canvas"
                      onClick={async () => {
-                        await openRoomCanvas()
+                        await toggleDisplayCanvas()
+                        // await openRoomCanvas()
                      }}
                   />
-                  <Button
+                  {/* <Button
                      label="Send Data"
                      onClick={async () => {
                         await sendData({
@@ -356,7 +236,7 @@ export default function Home() {
                            sendRaw: false,
                         })
                      }}
-                  />
+                  /> */}
 
                   <Button
                      label="Stats"

@@ -1,0 +1,185 @@
+import { Device } from "mediasoup-client"
+import {
+   DataConsumer,
+   DataConsumerOptions,
+} from "mediasoup-client/lib/DataConsumer"
+import { Transport } from "mediasoup-client/lib/Transport"
+import { useCallback, useState } from "react"
+import { Socket } from "socket.io-client"
+import {
+   DataConsumerInput,
+   DataProducerOrConsumerType,
+   UserMeta,
+} from "../types"
+
+const useDataConsumers = ({
+   userMeta,
+   roomId,
+   socket,
+   consumerTransport,
+   mediaSoupDevice,
+   initializeConsumerTransport,
+   loadToCanvas,
+}: {
+   userMeta: UserMeta
+   roomId: string
+   socket: Socket
+   consumerTransport: any
+   mediaSoupDevice: Device | null
+   initializeConsumerTransport: any
+   loadToCanvas: any
+}) => {
+   const [dataConsumerContainers, setDataConsumerContainers] = useState<
+      Array<{
+         dataConsumer: DataConsumer
+         type: DataProducerOrConsumerType
+      }>
+   >([])
+
+   const initDataConsume = async ({
+      peerId,
+      dataProducerId,
+   }: {
+      peerId: string
+      dataProducerId: string
+   }) => {
+      try {
+         await createDataConsumer({ type: "any", dataProducerId })
+      } catch (err) {
+         //Show failed to consume data from new data producer message
+         console.error(err)
+      }
+   }
+
+   const createDataConsumer = async ({
+      type,
+      dataProducerId,
+   }: {
+      type: DataProducerOrConsumerType
+      dataProducerId: string
+   }) =>
+      new Promise(async (resolve, reject) => {
+         let transport: Transport
+         if (!consumerTransport) {
+            const newConsumerTransport = await initializeConsumerTransport()
+            if (newConsumerTransport) {
+               transport = newConsumerTransport
+            } else reject("Consumer transport not initialized")
+         } else if (!mediaSoupDevice) {
+            reject("Mediasoup device does not exist")
+         } else {
+            transport = consumerTransport
+         }
+         socket.emit(
+            "addDataConsumer",
+            {
+               userMeta,
+               roomId,
+               transportId: transport!.id,
+               dataProducerId,
+            },
+            async (response: any) => {
+               if (response.Status !== "success") {
+                  throw new Error(
+                     "Failed Data Consumer connect : " + response.Error,
+                  )
+               }
+               const {
+                  id,
+                  sctpStreamParameters,
+                  label,
+                  protocol,
+                  dataProducerId,
+               }: DataConsumerOptions = response.newConsumerParams
+               const dataConsumer = await transport.consumeData({
+                  id,
+                  dataProducerId,
+                  sctpStreamParameters,
+                  label,
+                  protocol,
+               })
+
+               //data consumer will close automatically, since transport closed
+               dataConsumer.on("transportclose", () => {
+                  console.log("Consumer transport closed in data consumer")
+                  // signalConsumerClosed(consumer.id)
+                  removeDataConsumer({
+                     dataConsumerType: type,
+                     dataConsumerId: dataConsumer.id,
+                  })
+               })
+
+               dataConsumer.on("close", () => {
+                  removeDataConsumer({
+                     dataConsumerType: type,
+                     dataConsumerId: dataConsumer.id,
+                  })
+               })
+
+               dataConsumer.on("error", async (data) => {
+                  // Emitted when the underlying DataChannel fails to connect.
+                  console.error("Data Consumer failed to connect", data)
+               })
+
+               dataConsumer.on("message", async (data) => {
+                  //data is likely stringified json, might need to parse
+                  await loadToCanvas(data)
+                  // console.log("RECEIVED DATA MESSAGE", data)
+               })
+               dataConsumer.observer.on("close", () => {
+                  console.log(
+                     "Data Consumer has been observed closed in data producer",
+                  )
+                  removeDataConsumer({
+                     dataConsumerType: type,
+                     dataConsumerId: dataConsumer.id,
+                  })
+               })
+
+               const newDataConsumerContainer = {
+                  dataConsumer,
+                  type,
+               }
+               setDataConsumerContainers((oldContainers) => [
+                  ...oldContainers,
+                  newDataConsumerContainer,
+               ])
+               resolve(dataConsumer)
+            },
+         )
+      })
+
+   // handles remove data consumer request from backend
+   const handleCloseDataConsumer = useCallback(
+      (msg) => {
+         const { id, userMeta: senderMeta } = msg
+         // console.log(
+         //    `Client ${userMeta.name} received close consumer request from ${senderMeta.name}`,
+         // )
+         //use "" for dataConsumerName, since server only sends us an id
+         removeDataConsumer({ dataConsumerType: "any", dataConsumerId: id })
+      },
+      [dataConsumerContainers],
+   )
+
+   const removeDataConsumer = ({
+      dataConsumerType,
+      dataConsumerId = null,
+   }: DataConsumerInput) => {
+      setDataConsumerContainers((oldContainers) =>
+         oldContainers.filter(
+            (c) =>
+               c.dataConsumer.id !== dataConsumerId ||
+               c.type !== dataConsumerType,
+         ),
+      )
+   }
+
+   return {
+      dataConsumerContainers,
+      initDataConsume,
+      handleCloseDataConsumer,
+   }
+}
+
+export default useDataConsumers

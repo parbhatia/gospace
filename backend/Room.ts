@@ -3,6 +3,8 @@ import { Socket } from "socket.io"
 import sendRoomUpdate from "./helpers/sendRoomUpdate"
 import Peer from "./Peer"
 import { RoomInfo, UserMeta } from "./types"
+import debugm from "debug"
+const debug = debugm("app:Room")
 interface RoomConstructParams {
    id: string
    router: Router
@@ -51,7 +53,7 @@ class Room {
    }
    addPeer = async (peer: Peer) => {
       this.peers.set(peer.getUserMeta().id, peer)
-      console.log(`Peer ${peer.getUserMeta().name} added to room ${this.id}`)
+      debug(`Peer ${peer.getUserMeta().name} added to room ${this.id}`)
       await this.broadcastRoomInfoToAll()
    }
    getPeer = (userMeta: UserMeta): Peer => this.peers.get(userMeta.id)!
@@ -66,7 +68,7 @@ class Room {
       userMeta: UserMeta
       producerId: string
    }) => {
-      console.log(`Room is removing consumers of ${userMeta.name}`)
+      debug(`Room is removing consumers of ${userMeta.name}`)
       this.peers.forEach((peer, peerId) => {
          if (userMeta.id !== peerId) {
             peer.removeConsumerOfProducer({ producerId })
@@ -78,7 +80,7 @@ class Room {
          const peerToRemove = this.getPeer(userMeta)
          await peerToRemove.closeTransports()
          this.peers.delete(userMeta.id)
-         console.log(`Removing peer ${userMeta.name} from room`)
+         debug(`Removing peer ${userMeta.name} from room`)
          if (this.peers.size === 0 && removeEmptyRoom) {
             this.removeRoom(this.id)
          }
@@ -114,11 +116,11 @@ class Room {
    }
 
    debug = async () => {
-      console.log(`Room ${this.id} has ${this.peers.size} peers`)
+      debug(`Room ${this.id} has ${this.peers.size} peers`)
       this.peers.forEach((p, i) => {
-         console.log(`${i} : ${p.getUserMeta().name}`)
+         debug(`${i} : ${p.getUserMeta().name}`)
       })
-      console.log("")
+      debug("")
    }
 }
 

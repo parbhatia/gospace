@@ -8,16 +8,16 @@ const useDebug = ({
    producerTransport,
    producerContainers,
    consumerContainers,
-   dataProducers,
-   dataConsumers,
+   dataConsumerContainers,
+   dataProducerContainers,
 }: {
    socket: Socket
    consumerTransport: Transport | null
    producerTransport: Transport | null
    producerContainers
    consumerContainers
-   dataProducers
-   dataConsumers
+   dataConsumerContainers
+   dataProducerContainers
 }) => {
    return JSON.stringify(
       {
@@ -51,8 +51,18 @@ const useDebug = ({
                paused: c.mediaStream.paused,
             },
          })),
-         dataProducers,
-         dataConsumers,
+         dataProducerContainers: dataProducerContainers.map((c) => ({
+            id: c.dataProducer.id,
+            type: c.type,
+            paused: c.dataProducer.paused,
+            closed: c.dataProducer.closed,
+         })),
+         dataConsumerContainers: dataConsumerContainers.map((c) => ({
+            id: c.dataConsumer.id,
+            type: c.type,
+            paused: c.dataConsumer.paused,
+            closed: c.dataConsumer.closed,
+         })),
       },
       null,
       2,

@@ -2,6 +2,9 @@ import { RtpCapabilities } from "mediasoup/lib/types"
 import { Socket } from "socket.io"
 import RoomFactory from "../../RoomFactory"
 import { UserMeta } from "../../types"
+import debugm from "debug"
+const debug = debugm("app:addConsumer")
+
 export default ({
    socket,
    roomFactory,
@@ -27,7 +30,7 @@ export default ({
          appData: any
          paused: boolean | undefined
       } = msg
-      // console.log(
+      // debug(
       //    `Peer ${userMeta.name} requests to add consumer with transportId ${transportId} and producerId ${producerId}`,
       // )
       try {
@@ -43,15 +46,15 @@ export default ({
             if (!newConsumerParams) {
                throw new Error("Unable to add consumer")
             }
-            console.log(
+            debug(
                `New consumer  added for Peer ${userMeta.name} with id ${newConsumerParams.id}`,
             )
             callback({ Status: "success", newConsumerParams })
          } else {
-            console.log(`No room with ${roomId} exists`)
+            debug(`No room with ${roomId} exists`)
          }
       } catch (e) {
-         console.log(
+         debug(
             `Peer ${userMeta.name} request to add consumer with transportId ${transportId} failed!`,
          )
          callback({ Status: "failure", Error: e })

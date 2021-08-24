@@ -1,6 +1,10 @@
 const Connected = () => (
    <span className="px-4 py-2 text-base text-green-600 bg-green-200 rounded-full ">
-      Connected
+      Connected{" "}
+      <span className="w-3 h-3">
+         <span className="absolute w-4 h-4 bg-green-400 rounded-full opacity-75 animate-ping"></span>
+         <span className="relative inline-flex w-3 h-3 bg-green-500 rounded-full "></span>
+      </span>
    </span>
 )
 const Connecting = () => (
@@ -42,6 +46,6 @@ const StatusComponent = ({
    connectionStatus,
 }: {
    connectionStatus: string
-}) => <div className="">{ConnectionSwitch({ connectionStatus })}</div>
+}) => <div className="w-full">{ConnectionSwitch({ connectionStatus })}</div>
 
 export default StatusComponent

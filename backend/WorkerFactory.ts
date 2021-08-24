@@ -1,6 +1,8 @@
 import { createWorker } from "mediasoup"
 import { Worker, WorkerResourceUsage } from "mediasoup/lib/types"
 import config from "./config/mediasoup"
+import debugm from "debug"
+const debug = debugm("app:WorkerFactory")
 
 // A single Worker contains multiple Routers
 interface WorkerFactoryConstructParams {
@@ -28,7 +30,7 @@ class WorkerFactory {
          rtcMaxPort: config.mediasoup.worker.rtcMaxPort,
       })
       worker.on("died", (error) => {
-         console.error("Worker died!: %o", worker.pid, error)
+         debug("Worker died!: %o", worker.pid, error)
       })
       return worker
    }

@@ -1,5 +1,6 @@
 import cors from "cors"
 import express from "express"
+
 // import { createServer } from "http"
 import { Server, Socket } from "socket.io"
 import { serverPort } from "./config/index"
@@ -10,7 +11,7 @@ import addProducer from "./helpers/socket/addProducer"
 import connectTransport from "./helpers/socket/connectTransport"
 import consumeExistingProducers from "./helpers/socket/consumeExistingProducers"
 import consumerClosed from "./helpers/socket/consumerClosed"
-import debug from "./helpers/socket/debug"
+import debugSocket from "./helpers/socket/debug"
 import disconnect from "./helpers/socket/disconnect"
 import producerClosed from "./helpers/socket/producerClosed"
 import removePeer from "./helpers/socket/removePeer"
@@ -22,6 +23,10 @@ import RoomFactory from "./RoomFactory"
 import { createServer as createHttpsServer } from "https"
 import fs from "fs"
 import path from "path"
+import consumeExistingDataProducers from "./helpers/socket/consumeExistingDataProducers"
+import debugm from "debug"
+const debug = debugm("app:main")
+
 const privateKey = fs.readFileSync(
    path.join(__dirname, "/certs/key.pem"),
    "utf8",
@@ -64,6 +69,7 @@ const main = async () => {
       producerClosed({ socket, roomFactory })
       consumerClosed({ socket, roomFactory })
       consumeExistingProducers({ socket, roomFactory })
+      consumeExistingDataProducers({ socket, roomFactory })
 
       addDataProducer({ socket, roomFactory })
       addDataConsumer({ socket, roomFactory })
@@ -71,12 +77,12 @@ const main = async () => {
       removePeer({ socket, roomFactory })
       removeRoom({ socket, roomFactory })
 
-      debug({ socket, roomFactory })
+      debugSocket({ socket, roomFactory })
       disconnect({ socket, roomFactory })
    })
 
    server.listen(port, () => {
-      console.log(`Server started on port ${port}`)
+      debug(`Server started on port ${port}`)
    })
 }
 

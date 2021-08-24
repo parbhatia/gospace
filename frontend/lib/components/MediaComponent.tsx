@@ -1,6 +1,6 @@
 import { Consumer } from "mediasoup-client/lib/Consumer"
 import { Producer } from "mediasoup-client/lib/Producer"
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 
 const MediaComponent = ({
    peer,
@@ -12,7 +12,11 @@ const MediaComponent = ({
    mediaStream: MediaStream
 }) => {
    const videoRef: any = useRef()
+   const [paused, setPaused] = useState(true)
    useEffect(() => {
+      if (mediaStream && mediaStream.active) {
+         setPaused(false)
+      }
       if (videoRef.current) {
          videoRef.current.srcObject = mediaStream
          videoRef.current.muted = true
@@ -27,7 +31,11 @@ const MediaComponent = ({
       }
    }, [])
    return (
-      <div className="w-full ">
+      <div
+         className={`w-full ${
+            paused ? "bg-black animate-pulse" : "border-2"
+         } border-red-600`}
+      >
          {/* <img
             alt="team"
             className="flex-shrink-0 object-cover object-center w-full h-56 mb-4 rounded-lg"

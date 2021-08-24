@@ -24,6 +24,8 @@ import {
    ConsumeServerConsumeParams,
    ConsumeDataConsumerParams,
 } from "./types"
+import debugm from "debug"
+const debug = debugm("app:Peer")
 interface WebRtcTransportConstuctParams {
    userMeta: UserMeta
    router: Router
@@ -97,13 +99,13 @@ class Peer {
          this.removeTransport({ id: transport.id })
       })
       transport.on("close", () => {
-         console.log(
+         debug(
             `Peer ${this.userMeta.name}'s transport with ${transport.id} has closed`,
          )
          this.removeTransport({ id: transport.id })
       })
       transport.observer.on("close", () => {
-         console.log(
+         debug(
             `Peer ${this.userMeta.name}'s transport with ${transport.id} has closed IN OBSERVER`,
          )
       })
@@ -130,7 +132,7 @@ class Peer {
    }) => {
       if (this.transportExists({ id })) {
          const transport: Transport = this.getTransport({ id })!
-         // console.log(
+         // debug(
          //    `Peer ${this.userMeta.name} has connected transport with id ${id}`,
          // )
          await transport.connect({ dtlsParameters })
@@ -144,7 +146,7 @@ class Peer {
          producerId,
       })
       if (consumer) {
-         console.log(
+         debug(
             `Peer ${this.userMeta.name}'s consumer of producer is being removed`,
          )
          this.removeConsumer({ id: consumer.id, notifyClient: true })
@@ -157,9 +159,7 @@ class Peer {
       id: string
       notifyClient: boolean
    }) => {
-      console.log(
-         `Peer ${this.userMeta.name} needs to remove consumer of id ${id}`,
-      )
+      debug(`Peer ${this.userMeta.name} needs to remove consumer of id ${id}`)
       if (notifyClient) {
          this.socket.emit("closeConsumer", {
             id,
@@ -175,6 +175,9 @@ class Peer {
       this.dataProducers.delete(id)
    }
    removeDataConsumer = ({ id }: { id: string }) => {
+      debug(
+         `Peer ${this.userMeta.name} needs to remove data consumer of id ${id}`,
+      )
       this.dataConsumers.delete(id)
    }
    // handleStopConsuming
@@ -223,7 +226,7 @@ class Peer {
       this.consumers.forEach((consumer, consumerId) => {
          if (consumer.producerId === producerId) {
             consumerIdFound = consumerId
-            console.log(
+            debug(
                `Peer ${this.userMeta.name}'s consumer of producer is found ${consumerId}`,
             )
          }
@@ -254,7 +257,7 @@ class Peer {
          const newId = newProducer.id
          // producer will close automatically since transport closed
          newProducer.on("transportclose", () => {
-            console.log(
+            debug(
                `Peer ${this.userMeta.name}'s producer with id ${id} is closing`,
             )
             this.removeProducer({ id: newProducer.id })
@@ -287,10 +290,10 @@ class Peer {
       ) {
          if (this.getConsumerOfProducer({ producerId }) !== null) {
             //This is here for tests
-            console.log("Consumer exists")
+            debug("Consumer does not exist")
             return null
          }
-         // console.log(
+         // debug(
          //    `Peer ${this.userMeta.name}'s router is able to consume producer with id ${producerId}`,
          // )
          // Consume the producer by calling transport.consume({ producerId, rtpCapabilities }).
@@ -304,7 +307,7 @@ class Peer {
          })
          //consumer will close automatically since transport closed
          newConsumer.on("transportclose", () => {
-            console.log(
+            debug(
                `Peer ${this.userMeta.name} received a transport closed notification with id ${producerId}`,
             )
             this.removeConsumer({
@@ -313,7 +316,7 @@ class Peer {
             })
          })
          newConsumer.on("producerclose", () => {
-            console.log(
+            debug(
                `Peer ${this.userMeta.name} received a producer closed notification with id ${producerId}`,
             )
             this.removeConsumer({
@@ -322,13 +325,13 @@ class Peer {
             })
          })
          newConsumer.on("producerpause", () => {
-            console.log(
+            debug(
                `Peer ${this.userMeta.name} received a producer paused notification with id ${producerId}`,
             )
             newConsumer.pause()
          })
          newConsumer.on("producerresume", () => {
-            console.log(
+            debug(
                `Peer ${this.userMeta.name} received a producer resume notification with id ${producerId}`,
             )
             newConsumer.resume()
@@ -344,7 +347,7 @@ class Peer {
             appData: {},
          }
       } else {
-         console.log(
+         debug(
             `Peer ${this.userMeta.name}'s router is unable to consume producer with id ${producerId}`,
          )
          return null
@@ -375,7 +378,7 @@ class Peer {
          const newId = newDataProducer.id
          this.dataProducers.set(newId, newDataProducer)
          //notify peers of my join as new data producer
-         this.broadcastNewDataProducer({ dataProducerId: newId })
+         this.broadcastDataProducerToRoom({ dataProducerId: newId })
          return newDataProducer
       } else {
          return null
@@ -383,7 +386,7 @@ class Peer {
    }
    broadcastProducerToRoom = ({ producerId }: { producerId: string }) => {
       // Notify all OTHER peers in the room to consume producer
-      // console.log(
+      // debug(
       //    `Peer ${this.userMeta.name} is broadcasting its arrival of new producer`,
       // )
       const producer = this.getProducer({ id: producerId })
@@ -403,11 +406,11 @@ class Peer {
       socketId: string
    }) => {
       // Notify specific peer in the room to consume all producers
-      console.log(
+      debug(
          `Peer ${this.userMeta.name} is broadcasting all producers to peer ${userMeta.name}`,
       )
       this.producers.forEach((producer) => {
-         // console.log(producer)
+         // debug(producer)
          if (!producer.closed || !producer.paused) {
             io.to(socketId).emit("newProducer", {
                peerId: this.userMeta.id,
@@ -417,18 +420,43 @@ class Peer {
          }
       })
    }
-   broadcastNewDataProducer = ({
+   broadcastDataProducersToPeer = ({
+      userMeta,
+      socketId,
+   }: {
+      userMeta: UserMeta
+      socketId: string
+   }) => {
+      // Notify specific peer in the room to consume all data producers
+      // debug(
+      //    `Peer ${this.userMeta.name} is broadcasting all data producers to peer ${userMeta.name}`,
+      // )
+      this.dataProducers.forEach((dataProducer) => {
+         if (!dataProducer.closed) {
+            debug("#1", dataProducer.id)
+            io.to(socketId).emit("newDataProducer", {
+               peerId: this.userMeta.id,
+               peerName: this.userMeta.name,
+               dataProducerId: dataProducer.id,
+            })
+         }
+      })
+   }
+   broadcastDataProducerToRoom = ({
       dataProducerId,
    }: {
       dataProducerId: string
    }) => {
-      console.log(
-         `Peer ${this.userMeta.name} is broadcasting its arrival of new data producer`,
-      )
-      this.socket.to(this.roomId).emit("newDataProducer", {
-         peerId: this.userMeta.name,
-         dataProducerId,
-      })
+      // debug(
+      //    `Peer ${this.userMeta.name} is broadcasting its arrival of new data producer`,
+      // )
+      const dataProducer = this.getDataProducer({ id: dataProducerId })
+      if (dataProducer && !dataProducer.closed) {
+         this.socket.to(this.roomId).emit("newDataProducer", {
+            peerId: this.userMeta.name,
+            dataProducerId,
+         })
+      }
    }
    addDataConsumer = async ({
       id,
@@ -438,23 +466,26 @@ class Peer {
       dataProducerId: string
    }): Promise<ConsumeDataConsumerParams | null> => {
       if (this.transportExists({ id })) {
-         console.log(
-            `Peer ${this.userMeta.name}'s router is able to consume data producer with id ${dataProducerId}`,
-         )
          const transportToReference = this.getTransport({ id })
 
          const newDataConsumer = await transportToReference!.consumeData({
             dataProducerId,
          })
          newDataConsumer.on("transportclose", () => {
+            debug(
+               `Peer ${this.userMeta.name} received a transport closed notification with id ${newDataConsumer.id} in data consumer`,
+            )
             this.removeDataConsumer({ id: newDataConsumer.id })
          })
          newDataConsumer.on("dataproducerclose", () => {
+            debug(
+               `Peer ${this.userMeta.name} received a data producer closed notification with id ${newDataConsumer.id} in data consumer`,
+            )
             this.removeDataConsumer({ id: newDataConsumer.id })
          })
 
          //add data consumer to data consumers collection
-         this.dataConsumers.set(id, newDataConsumer)
+         this.dataConsumers.set(newDataConsumer.id, newDataConsumer)
          return {
             id: newDataConsumer.id,
             dataProducerId,
@@ -463,7 +494,7 @@ class Peer {
             protocol: newDataConsumer.protocol,
          }
       } else {
-         console.log(
+         debug(
             `Peer ${this.userMeta.name}'s router is unable to consume producer with id ${dataProducerId}`,
          )
          return null
@@ -471,30 +502,43 @@ class Peer {
    }
 
    closeTransports = async () => {
-      console.log(`Peer ${this.userMeta.name} is closing all its transports`)
+      debug(`Peer ${this.userMeta.name} is closing all its transports`)
       //Producers and Consumers will close and delete themselves if any associated transport closes
       this.transports.forEach((t) => t.close())
    }
+
    debug = async () => {
-      console.log("")
-      if (this.transports.size === 0) console.log("No Transports")
+      debug("")
+      if (this.transports.size === 0) debug("No Transports")
       else {
-         console.log("Transports:")
-         this.transports.forEach((t, tId) => console.log(tId))
+         debug("Transports:")
+         this.transports.forEach((t, tId) => debug(tId))
       }
-      console.log("")
-      if (this.producers.size === 0) console.log("No Producers")
+      debug("")
+      if (this.producers.size === 0) debug("No Producers")
       else {
-         console.log("Producers")
-         this.producers.forEach((t, tId) => console.log(tId))
+         debug("Producers")
+         this.producers.forEach((t, tId) => debug(tId))
       }
-      console.log("")
-      if (this.consumers.size === 0) console.log("No Consumers")
+      debug("")
+      if (this.consumers.size === 0) debug("No Consumers")
       else {
-         console.log("Consumers")
-         this.consumers.forEach((t, tId) => console.log(tId))
+         debug("Consumers")
+         this.consumers.forEach((t, tId) => debug(tId))
       }
-      console.log("")
+      debug("")
+      if (this.dataProducers.size === 0) debug("No Data Producers")
+      else {
+         debug("Data Producers")
+         this.dataProducers.forEach((t, tId) => debug(tId))
+      }
+      debug("")
+      if (this.dataConsumers.size === 0) debug("No Data Consumers")
+      else {
+         debug("Data Consumers")
+         this.dataConsumers.forEach((t, tId) => debug(tId))
+      }
+      debug("")
    }
 }
 

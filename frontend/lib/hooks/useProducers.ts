@@ -1,7 +1,6 @@
-import { Device } from "mediasoup-client"
 import { Producer } from "mediasoup-client/lib/Producer"
 import { Transport } from "mediasoup-client/lib/Transport"
-import { useState, useCallback } from "react"
+import { useState } from "react"
 import { Socket } from "socket.io-client"
 import createMediaStream from "../helpers/createMediaStream"
 import { UserMeta } from "../types"
@@ -13,7 +12,6 @@ const useProducers = ({
    producerTransport,
    initializeProducerTransport,
    closeProducerTransport,
-   initConsumeMedia,
 }: {
    userMeta: UserMeta
    roomId: string
@@ -21,7 +19,6 @@ const useProducers = ({
    producerTransport: any
    initializeProducerTransport: any
    closeProducerTransport: any
-   initConsumeMedia: any
 }) => {
    const [producerContainers, setProducerContainers] = useState<
       Array<{ mediaStream: MediaStream; producer: Producer; name: string }>
@@ -102,26 +99,9 @@ const useProducers = ({
       })
       removeProducer(producerId)
    }
-   //We handle not consuming our own producer in backend
-   const handleNewProducer = useCallback(
-      async (msg) => {
-         const {
-            peerId,
-            peerName,
-            producerId,
-         }: { peerId: string; peerName: string; producerId: string } = msg
-         // console.log(
-         //    `Client received broadcast message for new producer ${peerName}`,
-         // )
-         await initConsumeMedia({ peerId, peerName, producerId })
-      },
-      [initConsumeMedia],
-   )
-
    return {
       producerContainers,
       createProducer,
-      handleNewProducer,
    }
 }
 

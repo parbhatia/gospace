@@ -45,6 +45,10 @@ const useConsumerTransport = ({
                roomId,
                userMeta,
             })
+            socket.emit("consumeExistingDataProducers", {
+               roomId,
+               userMeta,
+            })
          }
          const ct: Transport = consumerTransport
 

@@ -100,6 +100,7 @@ const useConsumers = ({
                   reject(
                      "Failed Producer transport connect : " + response.Error,
                   )
+                  return
                }
                const {
                   id,
@@ -129,6 +130,10 @@ const useConsumers = ({
                })
 
                consumer.on("close", () => {
+                  removeConsumer(consumer.id)
+               })
+
+               consumer.observer.on("close", () => {
                   removeConsumer(consumer.id)
                })
 
@@ -167,9 +172,7 @@ const useConsumers = ({
          // console.log(
          //    `Client ${userMeta.name} received close consumer request from ${senderMeta.name}`,
          // )
-         setConsumerContainers((oldConsumerContainers) =>
-            oldConsumerContainers.filter((c) => c.consumer.id !== id),
-         )
+         removeConsumer(id)
       },
       [consumerContainers],
    )

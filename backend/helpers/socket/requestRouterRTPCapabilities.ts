@@ -3,6 +3,8 @@ import Room from "../../Room"
 import { UserMeta } from "../../types"
 import { Socket } from "socket.io"
 import RoomFactory from "../../RoomFactory"
+import debugm from "debug"
+const debug = debugm("app:requestRouterRTPCapabilities")
 
 export default ({
    socket,
@@ -16,15 +18,15 @@ export default ({
          //Create a room on this request
          const { roomId, userMeta }: { roomId: string; userMeta: UserMeta } =
             msg
-         // console.log(`Peer ${userMeta.name} requests Router RTP capabilities`)
+         // debug(`Peer ${userMeta.name} requests Router RTP capabilities`)
          let room: Room | undefined
          if (!roomFactory.roomExists(roomId)) {
-            // console.log(`Room with id ${roomId} does not exist. Creating room`)
+            // debug(`Room with id ${roomId} does not exist. Creating room`)
             room = await roomFactory.createNewRoom()
             if (!room) {
                throw new Error("Error creating room")
             }
-            console.log(`Created new room with id ${roomId}`)
+            debug(`Created new room with id ${roomId}`)
          } else {
             room = roomFactory.getRoom(roomId)!
          }
@@ -51,7 +53,7 @@ export default ({
             })
          }
       } catch (e) {
-         console.error(e)
+         debug(e)
          callback({ Status: "failure" })
       }
    })

@@ -7,6 +7,17 @@ export interface ConsumeServerConsumeParams {
    appData: any
 }
 
+export type DataProducerOrConsumerType = "canvas" | "text" | "any"
+
+export interface DataConsumerInput {
+   dataConsumerType: DataProducerOrConsumerType
+   dataConsumerId: string | null
+}
+
+export interface DataProducerInput {
+   dataProducerType: DataProducerOrConsumerType
+   dataProducerId: string | null
+}
 export interface RoomInfo {
    totalPeers: number
    name: string
