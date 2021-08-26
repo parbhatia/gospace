@@ -8,14 +8,20 @@
         "start": "next start"
     },
     "dependencies": {
+        "@dicebear/avatars": "^4.7.4",
+        "@dicebear/avatars-initials-sprites": "^4.7.4",
+        "@svgr/webpack": "^5.5.0",
+        "catenary-curve": "^1.0.1",
+        "lazy-brush": "^1.0.1",
         "lz-string": "^1.4.4",
         "mediasoup-client": "^3.6.37",
         "nanoid": "^3.1.25",
         "next": "11.1.0",
+        "prop-types": "^15.7.2",
         "react": "17.0.2",
-        "react-canvas-draw": "^1.1.1",
         "react-color": "^2.19.3",
         "react-dom": "17.0.2",
+        "resize-observer-polyfill": "^1.5.1",
         "socket.io-client": "^4.1.3"
     },
     "devDependencies": {

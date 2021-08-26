@@ -25,11 +25,12 @@ const useConsumerTransport = ({
       if (consumerTransport && !consumerTransport.closed) {
          consumerTransport.close()
          setConsumerTransport(null)
-         socket.emit("transportClosed", {
+         socket.emit("transportUpdate", {
             userMeta,
             roomId,
             transportId: consumerTransport.id,
             type: "consumer",
+            updateType: "close",
          })
       }
    }

@@ -10,23 +10,23 @@ import addDataProducer from "./helpers/socket/addDataProducer"
 import addProducer from "./helpers/socket/addProducer"
 import connectTransport from "./helpers/socket/connectTransport"
 import consumeExistingProducers from "./helpers/socket/consumeExistingProducers"
-import consumerClosed from "./helpers/socket/consumerClosed"
+import consumerUpdate from "./helpers/socket/consumerUpdate"
 import debugSocket from "./helpers/socket/debug"
 import disconnect from "./helpers/socket/disconnect"
-import producerClosed from "./helpers/socket/producerClosed"
+import producerUpdate from "./helpers/socket/producerUpdate"
 import removePeer from "./helpers/socket/removePeer"
 import removeRoom from "./helpers/socket/removeRoom"
 import requestCreateWebRtcTransport from "./helpers/socket/requestCreateWebRtcTransport"
 import requestRouterRTPCapabilities from "./helpers/socket/requestRouterRTPCapabilities"
-import transportClosed from "./helpers/socket/transportClosed"
+import transportUpdate from "./helpers/socket/transportUpdate"
 import RoomFactory from "./RoomFactory"
 import { createServer as createHttpsServer } from "https"
 import fs from "fs"
 import path from "path"
 import consumeExistingDataProducers from "./helpers/socket/consumeExistingDataProducers"
 import debugm from "debug"
-import dataProducerClosed from "./helpers/socket/dataProducerClosed"
-import dataConsumerClosed from "./helpers/socket/dataConsumerClosed"
+import dataProducerUpdate from "./helpers/socket/dataProducerUpdate"
+import dataConsumerUpdate from "./helpers/socket/dataConsumerUpdate"
 const debug = debugm("app:main")
 
 const privateKey = fs.readFileSync(
@@ -64,14 +64,15 @@ const main = async () => {
       requestRouterRTPCapabilities({ socket, roomFactory })
       requestCreateWebRtcTransport({ socket, roomFactory })
       connectTransport({ socket, roomFactory })
-      transportClosed({ socket, roomFactory })
 
       addProducer({ socket, roomFactory })
       addConsumer({ socket, roomFactory })
-      producerClosed({ socket, roomFactory })
-      consumerClosed({ socket, roomFactory })
-      dataProducerClosed({ socket, roomFactory })
-      dataConsumerClosed({ socket, roomFactory })
+      transportUpdate({ socket, roomFactory })
+      producerUpdate({ socket, roomFactory })
+      consumerUpdate({ socket, roomFactory })
+      dataProducerUpdate({ socket, roomFactory })
+      dataConsumerUpdate({ socket, roomFactory })
+
       consumeExistingProducers({ socket, roomFactory })
       consumeExistingDataProducers({ socket, roomFactory })
 

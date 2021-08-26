@@ -40,11 +40,12 @@ const useProducerTransport = ({
       if (producerTransport && !producerTransport.closed) {
          producerTransport.close()
          setProducerTransport(null)
-         socket.emit("transportClosed", {
+         socket.emit("transportUpdate", {
             userMeta,
             roomId,
             transportId: producerTransport.id,
             type: "producer",
+            updateType: "close",
          })
       }
    }

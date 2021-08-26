@@ -12,6 +12,16 @@ export interface UserMeta {
    name: string
 }
 
+export type PeerEntityType =
+   | "Producer"
+   | "Consumer"
+   | "DataProducer"
+   | "DataConsumer"
+   | "ProducerTransport"
+   | "ConsumerTransport"
+
+export type PeerEntityUpdateType = "close" | "pause" | "resume" | "unpause"
+
 export interface RoomInfo {
    totalPeers: number
 }

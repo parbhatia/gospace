@@ -15,6 +15,7 @@ import {
 } from "mediasoup/lib/types"
 import { Socket } from "socket.io"
 import { io } from "./main"
+import { PeerEntityType, PeerEntityUpdateType } from "./types"
 
 import mediasoupConfig from "./config/mediasoup"
 import Room from "./Room"
@@ -149,25 +150,65 @@ class Peer {
          debug(
             `Peer ${this.userMeta.name}'s consumer of producer is being removed`,
          )
-         this.removeConsumer({ id: consumer.id, notifyClient: true })
+         this.updateConsumerHelper({
+            id: consumer.id,
+            peerEntityUpdateType: "close",
+            notifyClient: true,
+         })
       }
    }
-   removeConsumer = ({
+   //used by backend
+   updateConsumerHelper = async ({
       id,
       notifyClient = false,
+      peerEntityUpdateType,
    }: {
       id: string
       notifyClient: boolean
+      peerEntityUpdateType: PeerEntityUpdateType
    }) => {
-      debug(`Peer ${this.userMeta.name} needs to remove consumer of id ${id}`)
-      if (notifyClient) {
-         this.socket.emit("closeConsumer", {
-            id,
-            userMeta: this.userMeta,
-         })
+      debug(
+         `Peer ${this.userMeta.name} needs to ${peerEntityUpdateType} consumer of id ${id}`,
+      )
+      const consumerToPause = this.getConsumer({ id })
+      if (consumerToPause) {
+         switch (peerEntityUpdateType) {
+            case "close":
+               this.consumers.delete(id)
+               notifyClient
+                  ? this.socket.emit("updateConsumer", {
+                       id,
+                       userMeta: this.userMeta,
+                       updateType: "close",
+                    })
+                  : null
+               break
+            case "pause":
+               await consumerToPause.pause()
+               notifyClient
+                  ? this.socket.emit("updateConsumer", {
+                       id,
+                       userMeta: this.userMeta,
+                       updateType: "pause",
+                    })
+                  : null
+               break
+            case "resume":
+               await consumerToPause.resume()
+               notifyClient
+                  ? this.socket.emit("updateConsumer", {
+                       id,
+                       userMeta: this.userMeta,
+                       updateType: "resume",
+                    })
+                  : null
+               break
+            default:
+               debug("invalid peer entity update type")
+         }
       }
-      this.consumers.delete(id)
    }
+
    removeProducer = ({ id }: { id: string }) => {
       this.producers.delete(id)
    }
@@ -180,56 +221,91 @@ class Peer {
       )
       this.dataConsumers.delete(id)
    }
-   // handleStopConsuming
 
-   ////////////////close transports/////////////////
-   handleProducerTransportClosed = ({
-      transportId,
+   //Non repetetive updater, called by client in frontend, so we make sure to not notify the client back about any updates
+   handleEntityUpdate = ({
+      peerEntityType,
+      peerEntityUpdateType,
+      id,
    }: {
-      transportId: string
+      id: string
+      peerEntityType: PeerEntityType
+      peerEntityUpdateType: PeerEntityUpdateType
    }) => {
-      this.getTransport({ id: transportId })?.close()
-      this.removeTransport({ id: transportId })
+      switch (peerEntityType) {
+         case "ProducerTransport":
+            switch (peerEntityUpdateType) {
+               case "close":
+                  this.getTransport({ id })?.close()
+                  this.removeTransport({ id })
+                  break
+               default:
+                  debug("Invalid peer entity update type")
+            }
+            break
+         case "ConsumerTransport":
+            switch (peerEntityUpdateType) {
+               case "close":
+                  this.getTransport({ id })?.close()
+                  this.removeTransport({ id })
+                  break
+               default:
+                  debug("Invalid peer entity update type")
+            }
+            break
+         case "Producer":
+            switch (peerEntityUpdateType) {
+               case "close":
+                  this.getProducer({ id })?.close()
+                  this.removeProducer({ id })
+                  break
+               case "pause":
+                  this.getProducer({ id })?.pause()
+                  break
+               case "resume":
+                  this.getProducer({ id })?.resume()
+                  break
+               default:
+                  debug("Invalid peer entity update type")
+            }
+            break
+         case "Consumer":
+            switch (peerEntityUpdateType) {
+               case "close":
+                  this.updateConsumerHelper({
+                     id,
+                     peerEntityUpdateType: "close",
+                     notifyClient: false,
+                  })
+                  break
+               default:
+                  debug("Invalid peer entity update type")
+            }
+            break
+         case "DataProducer":
+            switch (peerEntityUpdateType) {
+               case "close":
+                  this.getDataProducer({ id })?.close()
+                  this.removeDataProducer({ id })
+                  break
+               default:
+                  debug("Invalid peer entity update type")
+            }
+            break
+         case "DataConsumer":
+            switch (peerEntityUpdateType) {
+               case "close":
+                  this.getDataConsumer({ id })?.close()
+                  this.removeDataConsumer({ id })
+                  break
+               default:
+                  debug("Invalid peer entity update type")
+            }
+            break
+         default:
+            return
+      }
    }
-   handleConsumerTransportClosed = ({
-      transportId,
-   }: {
-      transportId: string
-   }) => {
-      this.getTransport({ id: transportId })?.close()
-      this.removeTransport({ id: transportId })
-   }
-   //Client sends message for producer closed, close producer here in server
-   handleProducerClosed = ({ producerId }: { producerId: string }) => {
-      this.getProducer({ id: producerId })?.close()
-      this.removeProducer({ id: producerId })
-      //tell everyone in the room that consumer has closed, on the server side, so they should stop listening to this consumer
-      // this.room.removeConsumers({ userMeta: this.userMeta, producerId })
-   }
-   //Client sends message for data producer closed, close data producer here in server
-   handleDataProducerClosed = ({
-      dataProducerId,
-   }: {
-      dataProducerId: string
-   }) => {
-      this.getDataProducer({ id: dataProducerId })?.close()
-      this.removeDataProducer({ id: dataProducerId })
-   }
-   //Client sends message for data consumer closed, close data consumer here in server
-   handleDataConsumerClosed = ({
-      dataConsumerId,
-   }: {
-      dataConsumerId: string
-   }) => {
-      this.getDataConsumer({ id: dataConsumerId })?.close()
-      this.removeDataConsumer({ id: dataConsumerId })
-   }
-   //Client sends message for consumer closed, close consumer here in server
-   handleConsumerClosed = ({ consumerId }: { consumerId: string }) => {
-      this.getConsumer({ id: consumerId })?.close()
-      this.removeConsumer({ id: consumerId, notifyClient: false })
-   }
-   ////////////////close transports/////////////////
 
    getDataProducer = ({ id }: { id: string }) => this.dataProducers.get(id)
    getDataConsumer = ({ id }: { id: string }) => this.dataConsumers.get(id)
@@ -335,8 +411,9 @@ class Peer {
             debug(
                `Peer ${this.userMeta.name} received a transport closed notification with id ${producerId}`,
             )
-            this.removeConsumer({
+            this.updateConsumerHelper({
                id: newConsumer.id,
+               peerEntityUpdateType: "close",
                notifyClient: true,
             })
          })
@@ -344,22 +421,31 @@ class Peer {
             debug(
                `Peer ${this.userMeta.name} received a producer closed notification with id ${producerId}`,
             )
-            this.removeConsumer({
+            this.updateConsumerHelper({
                id: newConsumer.id,
+               peerEntityUpdateType: "close",
                notifyClient: true,
             })
          })
-         newConsumer.on("producerpause", () => {
+         newConsumer.on("producerpause", async () => {
             debug(
                `Peer ${this.userMeta.name} received a producer paused notification with id ${producerId}`,
             )
-            newConsumer.pause()
+            this.updateConsumerHelper({
+               id: newConsumer.id,
+               peerEntityUpdateType: "pause",
+               notifyClient: true,
+            })
          })
-         newConsumer.on("producerresume", () => {
+         newConsumer.on("producerresume", async () => {
             debug(
                `Peer ${this.userMeta.name} received a producer resume notification with id ${producerId}`,
             )
-            newConsumer.resume()
+            this.updateConsumerHelper({
+               id: newConsumer.id,
+               peerEntityUpdateType: "resume",
+               notifyClient: true,
+            })
          })
 
          //add transport to consumers collection
@@ -452,7 +538,6 @@ class Peer {
          `Peer ${this.userMeta.name} is broadcasting all producers to peer ${userMeta.name}`,
       )
       this.producers.forEach((producer) => {
-         // debug(producer)
          if (!producer.closed || !producer.paused) {
             io.to(socketId).emit("newProducer", {
                peerId: this.userMeta.id,
@@ -476,7 +561,6 @@ class Peer {
       // )
       this.dataProducers.forEach((dataProducer) => {
          if (!dataProducer.closed) {
-            debug("#1", dataProducer.id)
             io.to(socketId).emit("newDataProducer", {
                peerId: this.userMeta.id,
                peerName: this.userMeta.name,
@@ -583,7 +667,7 @@ class Peer {
       else {
          debug("Producers")
          this.producers.forEach((t, tId) =>
-            debug({ id: tId, appData: t.appData }),
+            debug({ id: tId, appData: t.appData, paused: t.paused }),
          )
       }
       debug("")
@@ -591,7 +675,7 @@ class Peer {
       else {
          debug("Consumers")
          this.consumers.forEach((t, tId) =>
-            debug({ id: tId, appData: t.appData }),
+            debug({ id: tId, appData: t.appData, paused: t.paused }),
          )
       }
       debug("")

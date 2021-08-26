@@ -11,6 +11,10 @@ export type DataProducerOrConsumerType = "canvas" | "text" | "any"
 
 export type TransportDataType = "video" | "audio"
 
+export type ProducerUpdateType = "close" | "pause" | "resume"
+export type ConsumerUpdateType = "close" | "pause" | "resume"
+export type DataConsumerUpdateType = "close" | "pause" | "resume"
+export type DataProducerUpdateType = "close" | "pause" | "resume"
 export interface DataConsumerInput {
    dataConsumerType: DataProducerOrConsumerType
    dataConsumerId: string | null

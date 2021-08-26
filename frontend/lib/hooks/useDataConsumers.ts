@@ -8,6 +8,7 @@ import { useCallback, useState } from "react"
 import { Socket } from "socket.io-client"
 import {
    DataConsumerInput,
+   DataConsumerUpdateType,
    DataProducerOrConsumerType,
    UserMeta,
 } from "../types"
@@ -128,7 +129,7 @@ const useDataConsumers = ({
                })
 
                dataConsumer.on("close", () => {
-                  signalDataConsumerClosed(dataConsumer.id)
+                  signalDataConsumerUpdate(dataConsumer.id, "close")
                   removeDataConsumer({
                      dataConsumerType: type,
                      dataConsumerId: dataConsumer.id,
@@ -141,15 +142,16 @@ const useDataConsumers = ({
                })
 
                dataConsumer.on("message", async (data) => {
-                  //data is likely stringified json, might need to parse
-                  await loadToCanvas(data)
-                  // console.log("RECEIVED DATA MESSAGE", data)
+                  if (dataConsumer.readyState === "open") {
+                     //data is likely stringified json, might need to parse
+                     await loadToCanvas(data)
+                  }
                })
                dataConsumer.observer.on("close", () => {
                   console.log(
                      "Data Consumer has been observed closed in data producer",
                   )
-                  signalDataConsumerClosed(dataConsumer.id)
+                  signalDataConsumerUpdate(dataConsumer.id, "close")
                   removeDataConsumer({
                      dataConsumerType: type,
                      dataConsumerId: dataConsumer.id,
@@ -179,12 +181,15 @@ const useDataConsumers = ({
       [dataConsumerContainers],
    )
 
-   //Incase Consumer closes without consumer transport being closed
-   const signalDataConsumerClosed = (dataConsumerId: string) => {
-      socket.emit("dataConsumerClosed", {
+   const signalDataConsumerUpdate = (
+      dataConsumerId: string,
+      updateType: DataConsumerUpdateType,
+   ) => {
+      socket.emit("dataConsumerUpdate", {
          userMeta,
          roomId,
          dataConsumerId,
+         updateType,
       })
    }
 

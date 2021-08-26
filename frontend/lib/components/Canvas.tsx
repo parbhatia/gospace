@@ -1,13 +1,13 @@
-import CanvasDraw from "react-canvas-draw"
-import { GithubPicker } from "react-color"
+// import CanvasDraw from "react-canvas-draw"
 import { useState } from "react"
-import Image from "next/image"
-import pencilIcon from "../../assets/pencil.svg"
-import eraserIcon from "../../assets/eraser.svg"
-import saveIcon from "../../assets/save.svg"
-import plusIcon from "../../assets/plus.svg"
-import minusIcon from "../../assets/minus.svg"
+import { GithubPicker } from "react-color"
+import EraserIcon from "../../assets/eraser.svg"
+import MinusIcon from "../../assets/minus.svg"
+import PencilIcon from "../../assets/pencil.svg"
+import PlusIcon from "../../assets/plus.svg"
+import SaveIcon from "../../assets/save.svg"
 import downloadImage from "../helpers/downloadImage"
+import CanvasDraw from "./CanvasDraw"
 import ToolButton from "./CanvasToolButton"
 
 const DEFAULT_CANVAS_BRUSH_COLOR = "#191919"
@@ -92,13 +92,13 @@ const Canvas = ({ canvasRef, onChange }) => {
          </div>
          <div className="flex">
             <ToolButton onClick={handlePencilPick}>
-               <Image src={pencilIcon} alt="pencilIcon" />
+               <PencilIcon />
             </ToolButton>
             <ToolButton onClick={handleEraserPick}>
-               <Image src={eraserIcon} alt="eraserIcon" />
+               <EraserIcon />
             </ToolButton>
             <ToolButton onClick={handleCanvasSave}>
-               <Image src={saveIcon} alt="saveIcon" />
+               <SaveIcon />
             </ToolButton>
 
             <GithubPicker
@@ -129,10 +129,10 @@ const Canvas = ({ canvasRef, onChange }) => {
                onChangeComplete={handleColorPick}
             />
             <ToolButton onClick={handleIncreaseRadius}>
-               <Image src={plusIcon} alt="saveIcon" />
+               <PlusIcon />
             </ToolButton>
             <ToolButton onClick={handleDecreaseRadius}>
-               <Image src={minusIcon} alt="saveIcon" />
+               <MinusIcon />
             </ToolButton>
          </div>
       </div>

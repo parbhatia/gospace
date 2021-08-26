@@ -41,7 +41,7 @@ export default function Home() {
       errors: mediaSoupErrors,
    } = useConnectToMediasoup({ userMeta, roomId: roomInfo.id, socket })
 
-   const { consumerContainers, initConsumeMedia, handleCloseConsumer } =
+   const { consumerContainers, initConsumeMedia, handleConsumerUpdate } =
       useConsumers({
          userMeta,
          roomId: roomInfo.id,
@@ -50,14 +50,15 @@ export default function Home() {
          mediaSoupDevice,
          initializeConsumerTransport,
       })
-   const { producerContainers, createProducer } = useProducers({
-      userMeta,
-      roomId: roomInfo.id,
-      socket,
-      producerTransport,
-      initializeProducerTransport,
-      closeProducerTransport,
-   })
+   const { producerContainers, createProducer, updateProducerOfType } =
+      useProducers({
+         userMeta,
+         roomId: roomInfo.id,
+         socket,
+         producerTransport,
+         initializeProducerTransport,
+         closeProducerTransport,
+      })
 
    const { dataProducerContainers, createDataProducer } = useDataProducers({
       userMeta,
@@ -72,7 +73,7 @@ export default function Home() {
       openRoomCanvas,
       canvasRef,
       loadToCanvas,
-      toggleDisplayCanvas,
+      closeRoomCanvas,
    } = useRoomCanvas({ createDataProducer })
 
    const { dataConsumerContainers, initDataConsume, handleCloseDataConsumer } =
@@ -102,9 +103,23 @@ export default function Home() {
                transportDataType: "video",
             })
          }
-         openRoomCanvas()
+         // openRoomCanvas()
       }
    }, [producerTransport])
+
+   const handleOpenRoomCanvas = async () => {
+      //pause all producers for video, we still want to produce audio
+      await updateProducerOfType("video", "pause")
+      //initiate data producer for canvas data by calling openRoomCanvas
+      await openRoomCanvas()
+   }
+
+   const handleCloseRoomCanvas = async () => {
+      //resume all producers for video
+      await updateProducerOfType("video", "resume")
+      //close data producer for canvas data
+      await closeRoomCanvas()
+   }
 
    const checkDeviceProduceCapability = (kind: "audio" | "video"): boolean => {
       if (!mediaSoupDevice || !mediaSoupDevice.canProduce(kind)) {
@@ -130,7 +145,7 @@ export default function Home() {
          socket.on("error", socketError)
          socket.on("newDataProducer", handleNewDataProducer)
          socket.on("newProducer", handleNewProducer)
-         socket.on("closeConsumer", handleCloseConsumer)
+         socket.on("updateConsumer", handleConsumerUpdate)
          socket.on("roomUpdate", handleRoomUpdate)
       }
       return () => {
@@ -139,7 +154,7 @@ export default function Home() {
             socket.off("error", socketError)
             socket.off("newDataProducer", handleNewDataProducer)
             socket.off("newProducer", handleNewProducer)
-            socket.off("closeConsumer", handleCloseConsumer)
+            socket.off("updateConsumer", handleConsumerUpdate)
             socket.off("roomUpdate", handleRoomUpdate)
          }
       }
@@ -148,7 +163,7 @@ export default function Home() {
       socketError,
       handleNewDataProducer,
       handleNewProducer,
-      handleCloseConsumer,
+      handleConsumerUpdate,
    ])
 
    const closeSocket = () => {
@@ -229,26 +244,11 @@ export default function Home() {
                         }
                      }}
                   />
+                  <Button label="Open Canvas" onClick={handleOpenRoomCanvas} />
                   <Button
-                     label="Open Canvas"
-                     onClick={async () => {
-                        await toggleDisplayCanvas()
-                        // await openRoomCanvas()
-                     }}
+                     label="Close Canvas"
+                     onClick={handleCloseRoomCanvas}
                   />
-                  {/* <Button
-                     label="Send Data"
-                     onClick={async () => {
-                        await sendData({
-                           dataProducer: canvasDataProducer.current,
-                           data: {
-                              hello: "world",
-                           },
-                           sendRaw: false,
-                        })
-                     }}
-                  /> */}
-
                   <Button
                      label="Stats"
                      onClick={() => {

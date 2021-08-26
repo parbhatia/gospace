@@ -1,25 +1,28 @@
 import { compress, decompress } from "lz-string"
 import { DataProducer } from "mediasoup-client/lib/DataProducer"
 import { useEffect, useRef, useState } from "react"
-import CanvasDraw from "react-canvas-draw"
+import CanvasDraw from "../components/CanvasDraw"
 
 const useRoomCanvas = ({ createDataProducer }: { createDataProducer: any }) => {
    const canvasRef = useRef<CanvasDraw>(null)
    const [canvasProducer, setCanvasProducer] = useState<DataProducer | null>()
-   const [loadingCanvasData, setLoadingCanvasData] = useState(false)
-   const [displayCanvas, setDisplayCanvas] = useState(false)
-   const toggleDisplayCanvas = async () => {
-      if (displayCanvas) {
-         // canvasProducer!.pause()
-      }
-      setDisplayCanvas((oldVal) => !oldVal)
-   }
    const openRoomCanvas = async () => {
       try {
          const producer = await createDataProducer({ type: "canvas" })
          setCanvasProducer(producer)
       } catch (e) {
          console.error("Failed to connect to rooom canvas")
+      }
+   }
+   const closeRoomCanvas = async () => {
+      try {
+         if (canvasProducer) {
+            await canvasProducer.close()
+            // canvas consumers will close automatically because of how we listen to close events on data producers and consumers
+         }
+         setCanvasProducer(null)
+      } catch (e) {
+         console.error("Failed to close rooom canvas")
       }
    }
    useEffect(() => {
@@ -32,19 +35,12 @@ const useRoomCanvas = ({ createDataProducer }: { createDataProducer: any }) => {
    }, [setCanvasProducer])
 
    const sendCanvasData = async () => {
-      if (loadingCanvasData) return null
-      else if (
+      if (
          !canvasProducer ||
          canvasProducer.closed ||
          !canvasRef ||
          !canvasRef.current
       ) {
-         // console.log(
-         //    !canvasProducer,
-         //    canvasProducer.closed,
-         //    !canvasRef,
-         //    !canvasRef.current,
-         // )
          console.error("Error sending canvas data")
          return null
       }
@@ -62,9 +58,11 @@ const useRoomCanvas = ({ createDataProducer }: { createDataProducer: any }) => {
    const loadToCanvas = async (rawData) => {
       if (!canvasRef || !canvasRef.current) return null
       const decompressedParsedCanvasData = decompress(JSON.parse(rawData))
-      setLoadingCanvasData(true)
-      canvasRef.current!.loadSaveData(decompressedParsedCanvasData, true) //2nd param is immediate loading
-      setLoadingCanvasData(false)
+      await canvasRef.current!.loadSaveData(
+         decompressedParsedCanvasData,
+         true,
+         false,
+      ) //2nd param is immediate loading, 3rd param is whether we want the onChange function to be triggered
    }
 
    return {
@@ -72,25 +70,8 @@ const useRoomCanvas = ({ createDataProducer }: { createDataProducer: any }) => {
       openRoomCanvas,
       canvasRef,
       loadToCanvas,
-      toggleDisplayCanvas,
+      closeRoomCanvas,
    }
 }
 
 export default useRoomCanvas
-
-//    //Sends raw data, or JSON stringified data via data producer
-//    const sendDataData = async ({
-//       data,
-//       sendRaw = false,
-//    }: {
-//       data: any
-//       sendRaw: boolean
-//    }) => {
-//       if (canvasProducer && !canvasProducer.closed) {
-//          if (sendRaw) {
-//             await canvasProducer.send(data)
-//          } else {
-//             await canvasProducer.send(JSON.stringify(data))
-//          }
-//       }
-//    }

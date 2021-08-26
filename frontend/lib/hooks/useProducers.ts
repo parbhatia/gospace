@@ -3,7 +3,7 @@ import { Transport } from "mediasoup-client/lib/Transport"
 import { useState } from "react"
 import { Socket } from "socket.io-client"
 import createMediaStream from "../helpers/createMediaStream"
-import { TransportDataType, UserMeta } from "../types"
+import { ProducerUpdateType, TransportDataType, UserMeta } from "../types"
 
 const useProducers = ({
    userMeta,
@@ -71,12 +71,12 @@ const useProducers = ({
 
             producer.on("close", () => {
                console.log("Producer has closed")
-               signalProducerClosed(producer.id)
+               signalProducerUpdate(producer.id, "close")
                removeProducer(producer.id)
             })
             producer.observer.on("close", () => {
                console.log("Producer has been observed closed")
-               signalProducerClosed(producer.id)
+               signalProducerUpdate(producer.id, "close")
                removeProducer(producer.id)
             })
 
@@ -96,23 +96,48 @@ const useProducers = ({
       })
    }
 
+   const updateProducerOfType = (
+      transportDataType: TransportDataType,
+      updateType: ProducerUpdateType,
+   ) => {
+      producerContainers.forEach((c) => {
+         if (c.producer.appData.dataType === transportDataType) {
+            if (updateType === "pause") {
+               c.producer.pause()
+            } else if (updateType === "resume") {
+               c.producer.resume()
+            } else {
+               return
+            }
+            signalProducerUpdate(c.producer.id, updateType)
+         }
+      })
+   }
+
    const removeProducer = (producerId: string) => {
       //Media streams will close via un mount cleanup
       setProducerContainers((oldContainers) =>
          oldContainers.filter((p) => p.producer.id !== producerId),
       )
    }
-   //If producer closes without producer transport closing
-   const signalProducerClosed = (producerId: string) => {
-      socket.emit("producerClosed", {
+
+   //If producer updates, notify backend to sync changes
+   const signalProducerUpdate = (
+      producerId: string,
+      updateType: ProducerUpdateType,
+   ) => {
+      socket.emit("producerUpdate", {
          userMeta,
          roomId,
          producerId,
+         updateType,
       })
    }
+
    return {
       producerContainers,
       createProducer,
+      updateProducerOfType,
    }
 }
 

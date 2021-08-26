@@ -1,6 +1,7 @@
 import { Consumer } from "mediasoup-client/lib/Consumer"
 import { Producer } from "mediasoup-client/lib/Producer"
 import { useEffect, useRef, useState } from "react"
+import AvatarComponent from "./AvatarComponent"
 
 const MediaComponent = ({
    peer,
@@ -24,7 +25,7 @@ const MediaComponent = ({
    }, [mediaStream])
    useEffect(() => {
       return () => {
-         console.log("Video Component is unmounting of peer", label)
+         // console.log("Video Component is unmounting of peer", label)
          mediaStream.getTracks().forEach((track) => {
             track.stop()
          })
@@ -46,12 +47,7 @@ const MediaComponent = ({
             playsInline
             ref={videoRef}
          ></video>
-         <div className="w-full text-center">
-            <h2 className="text-lg font-medium text-gray-900 title-font">
-               {label}
-            </h2>
-            {/* <h3 className="mb-3 text-gray-500">UI Developer</h3> */}
-         </div>
+         <AvatarComponent name={label} />
       </div>
    )
 }

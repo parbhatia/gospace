@@ -4,7 +4,11 @@ import { Transport } from "mediasoup-client/lib/Transport"
 import { useCallback, useState } from "react"
 import { Socket } from "socket.io-client"
 import createMediaStreamFromTrack from "../helpers/createMediaStreamFromTrack"
-import { ConsumeServerConsumeParams, TransportDataType } from "../types"
+import {
+   ConsumerUpdateType,
+   ConsumeServerConsumeParams,
+   TransportDataType,
+} from "../types"
 import { UserMeta } from "../types"
 
 const useConsumers = ({
@@ -138,12 +142,12 @@ const useConsumers = ({
                })
 
                consumer.on("close", () => {
-                  signalConsumerClosed(consumer.id)
+                  signalConsumerUpdate(consumer.id, "close")
                   removeConsumer(consumer.id)
                })
 
                consumer.observer.on("close", () => {
-                  signalConsumerClosed(consumer.id)
+                  signalConsumerUpdate(consumer.id, "close")
                   removeConsumer(consumer.id)
                })
 
@@ -165,12 +169,32 @@ const useConsumers = ({
          oldContainers.filter((c) => c.consumer.id !== consumerId),
       )
    }
-   //Incase Consumer closes without consumer transport being closed
-   const signalConsumerClosed = (consumerId: string) => {
-      socket.emit("consumerClosed", {
+
+   const pauseConsumer = (consumerId: string) => {
+      consumerContainers.forEach((c) => {
+         if (c.consumer.id === consumerId) {
+            c.consumer.pause()
+         }
+      })
+   }
+   const resumeConsumer = (consumerId: string) => {
+      consumerContainers.forEach((c) => {
+         if (c.consumer.id === consumerId) {
+            c.consumer.resume()
+         }
+      })
+   }
+
+   //If consumer updates, notify backend to sync changes
+   const signalConsumerUpdate = (
+      consumerId: string,
+      updateType: ConsumerUpdateType,
+   ) => {
+      socket.emit("consumerUpdate", {
          userMeta,
          roomId,
          consumerId,
+         updateType,
       })
    }
 
@@ -186,10 +210,32 @@ const useConsumers = ({
       [consumerContainers],
    )
 
+   // handles update consumer request from backend
+   const handleConsumerUpdate = useCallback(
+      (msg) => {
+         const { id, userMeta: senderMeta, updateType } = msg
+         switch (updateType) {
+            case "close":
+               removeConsumer(id)
+               break
+            case "pause":
+               pauseConsumer(id)
+               break
+            case "resume":
+               resumeConsumer(id)
+               break
+         }
+         // console.log(
+         //    `Client ${userMeta.name} received close consumer request from ${senderMeta.name}`,
+         // )
+      },
+      [consumerContainers],
+   )
+
    return {
       consumerContainers,
       initConsumeMedia,
-      handleCloseConsumer,
+      handleConsumerUpdate,
    }
 }
 

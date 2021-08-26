@@ -5,6 +5,7 @@ import { Socket } from "socket.io-client"
 import {
    DataProducerInput,
    DataProducerOrConsumerType,
+   DataProducerUpdateType,
    UserMeta,
 } from "../types"
 
@@ -37,7 +38,6 @@ const useDataProducers = ({
       type: DataProducerOrConsumerType
    }) =>
       new Promise(async (resolve, reject) => {
-         console.log("createDataProducer")
          try {
             let transport: Transport
             if (!producerTransport) {
@@ -71,7 +71,7 @@ const useDataProducers = ({
                // })
             })
             dataProducer.on("bufferedamountlow", () => {
-               console.log("Data Producer has buffered amount low")
+               // console.log("Data Producer has buffered amount low")
                // removeDataProducer({
                //    dataProducerId: dataProducer.id,
                //    dataProducerType: type,
@@ -79,7 +79,7 @@ const useDataProducers = ({
             })
 
             dataProducer.on("close", () => {
-               signalDataProducerClosed(dataProducer.id)
+               signalDataProducerUpdate(dataProducer.id, "close")
                console.log("Data Producer has closed in data producer")
                removeDataProducer({
                   dataProducerId: dataProducer.id,
@@ -90,7 +90,7 @@ const useDataProducers = ({
                console.log(
                   "Data Producer has been observed closed in data producer",
                )
-               signalDataProducerClosed(dataProducer.id)
+               signalDataProducerUpdate(dataProducer.id, "close")
                removeDataProducer({
                   dataProducerId: dataProducer.id,
                   dataProducerType: type,
@@ -124,12 +124,15 @@ const useDataProducers = ({
       )
    }
 
-   //If data producer closes without producer transport closing
-   const signalDataProducerClosed = (dataProducerId: string) => {
-      socket.emit("dataProducerClosed", {
+   const signalDataProducerUpdate = (
+      dataProducerId: string,
+      updateType: DataProducerUpdateType,
+   ) => {
+      socket.emit("dataProducerUpdate", {
          userMeta,
          roomId,
          dataProducerId,
+         updateType,
       })
    }
    return { dataProducerContainers, createDataProducer }
