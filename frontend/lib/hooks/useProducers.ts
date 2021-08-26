@@ -47,6 +47,7 @@ const useProducers = ({
             const track = mediaConstraints.video
                ? stream.getVideoTracks()[0]
                : stream.getAudioTracks()[0]
+            track.enabled = true
 
             const producer = await transport!.produce({
                appData: {

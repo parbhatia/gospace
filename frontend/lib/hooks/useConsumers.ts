@@ -28,6 +28,8 @@ const useConsumers = ({
 }) => {
    const [consumerContainers, setConsumerContainers] = useState<
       Array<{
+         // audioStream: MediaStream
+         peerId: string
          mediaStream: MediaStream
          consumer: Consumer
          name: string
@@ -77,7 +79,7 @@ const useConsumers = ({
       mediaStream: MediaStream
       consumer: Consumer
       name: string
-      id: string
+      peerId: string
    }> => {
       return new Promise(async (resolve, reject) => {
          let transport: Transport
@@ -155,7 +157,7 @@ const useConsumers = ({
                   mediaStream: stream,
                   consumer,
                   name: peerName,
-                  id: peerId,
+                  peerId,
                }
                resolve(newConsumerContainer)
             },
@@ -174,6 +176,7 @@ const useConsumers = ({
       consumerContainers.forEach((c) => {
          if (c.consumer.id === consumerId) {
             c.consumer.pause()
+            c.mediaStream.getTracks()[0].enabled = false
          }
       })
    }
@@ -181,6 +184,7 @@ const useConsumers = ({
       consumerContainers.forEach((c) => {
          if (c.consumer.id === consumerId) {
             c.consumer.resume()
+            c.mediaStream.getTracks()[0].enabled = true
          }
       })
    }
@@ -197,18 +201,6 @@ const useConsumers = ({
          updateType,
       })
    }
-
-   // handles remove consumer request from backend
-   const handleCloseConsumer = useCallback(
-      (msg) => {
-         const { id, userMeta: senderMeta } = msg
-         // console.log(
-         //    `Client ${userMeta.name} received close consumer request from ${senderMeta.name}`,
-         // )
-         removeConsumer(id)
-      },
-      [consumerContainers],
-   )
 
    // handles update consumer request from backend
    const handleConsumerUpdate = useCallback(

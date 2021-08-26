@@ -1,9 +1,8 @@
-import { DataProducer } from "mediasoup-client/lib/DataProducer"
 import { useCallback, useContext, useEffect, useState } from "react"
 import { AUDIO_CONSTRAINTS, VIDEO_CONSTRAINTS } from "../config"
 import Button from "../lib/components/Button"
 import Canvas from "../lib/components/Canvas"
-import MediaComponent from "../lib/components/MediaComponent"
+import MediaManager from "../lib/components/MediaManager"
 import StatusComponent from "../lib/components/StatusComponent"
 import getRandomId from "../lib/helpers/getRandomId"
 import useConnectToMediasoup from "../lib/hooks/useConnectToMediasoup"
@@ -327,23 +326,26 @@ export default function Home() {
                   <div>
                      {producerContainers.map((p) => (
                         <div key={p.producer.id}>
-                           <MediaComponent
+                           <MediaManager
+                              id={p.peerId}
                               label={userMeta.name}
                               mediaStream={p.mediaStream}
                               peer={p.producer}
+                              mediaType={p.producer.appData.dataType}
                            />
                         </div>
                      ))}
                   </div>
 
-                  <div></div>
                   <div className="container mx-auto space-y-2 lg:space-y-0 lg:gap-2 lg:grid lg:grid-cols-3">
                      {consumerContainers.map((c, i) => (
                         <div key={c.consumer.id}>
-                           <MediaComponent
+                           <MediaManager
+                              id={c.peerId}
                               label={c.name}
                               mediaStream={c.mediaStream}
                               peer={c.consumer}
+                              mediaType={c.consumer.appData.dataType}
                            />
                         </div>
                      ))}

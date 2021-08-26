@@ -49,7 +49,12 @@ export default ({
             debug(
                `New consumer  added for Peer ${userMeta.name} with id ${newConsumerParams.id}`,
             )
-            callback({ Status: "success", newConsumerParams })
+            //For some reason, newConsumerParams does not include the oriignal appData provided to it, so we need to manually add the appData that the producer provided
+            const modifiedNewConsumerParams = { ...newConsumerParams, appData }
+            callback({
+               Status: "success",
+               newConsumerParams: modifiedNewConsumerParams,
+            })
          } else {
             debug(`No room with ${roomId} exists`)
          }
