@@ -38,15 +38,21 @@ const useProducerTransport = ({
 
    const closeProducerTransport = () => {
       if (producerTransport && !producerTransport.closed) {
-         producerTransport.close()
-         setProducerTransport(null)
-         socket.emit("transportUpdate", {
-            userMeta,
-            roomId,
-            transportId: producerTransport.id,
-            type: "producer",
-            updateType: "close",
-         })
+         try {
+            producerTransport.close()
+            setProducerTransport(null)
+            socket.emit("transportUpdate", {
+               userMeta,
+               roomId,
+               transportId: producerTransport.id,
+               type: "producer",
+               updateType: "close",
+            })
+         } catch (e) {
+            console.log(
+               "Couldn't close producer transport. It was probably already closed",
+            )
+         }
       }
    }
 

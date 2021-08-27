@@ -7,7 +7,7 @@ import { Catenary } from "catenary-curve"
 
 import ResizeObserver from "resize-observer-polyfill"
 
-import drawImage from "./drawImage"
+import drawImage from "../helpers/drawImage"
 
 function midPointBtw(p1, p2) {
    return {

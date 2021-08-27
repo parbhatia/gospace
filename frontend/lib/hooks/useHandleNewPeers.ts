@@ -21,7 +21,6 @@ const useHandleNewPeers = ({
    //We handle not consuming our own producer in backend
    const handleNewProducer = useCallback(
       async (msg) => {
-         console.log("handleNewProducer")
          if (cannotHandleNewPeers) {
             return
          }

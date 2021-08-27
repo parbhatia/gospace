@@ -223,7 +223,7 @@ class Peer {
    }
 
    //Non repetetive updater, called by client in frontend, so we make sure to not notify the client back about any updates
-   handleEntityUpdate = ({
+   handleEntityUpdate = async ({
       peerEntityType,
       peerEntityUpdateType,
       id,
@@ -260,11 +260,13 @@ class Peer {
                   this.removeProducer({ id })
                   break
                case "pause":
-                  this.getProducer({ id })?.pause()
-                  break
+                  await this.getProducer({ id })?.pause()
+                  return this.getProducer({ id })?.paused
+               // break
                case "resume":
-                  this.getProducer({ id })?.resume()
-                  break
+                  await this.getProducer({ id })?.resume()
+                  return !this.getProducer({ id })?.paused
+               // break
                default:
                   debug("Invalid peer entity update type")
             }
@@ -272,7 +274,7 @@ class Peer {
          case "Consumer":
             switch (peerEntityUpdateType) {
                case "close":
-                  this.updateConsumerHelper({
+                  await this.updateConsumerHelper({
                      id,
                      peerEntityUpdateType: "close",
                      notifyClient: false,

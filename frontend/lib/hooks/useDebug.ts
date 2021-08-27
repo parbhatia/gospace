@@ -3,11 +3,43 @@ import { useEffect, useState } from "react"
 import { Socket } from "socket.io-client"
 import { DataProducer } from "mediasoup-client/lib/DataProducer"
 
+const containerMapper = (
+   container,
+   containerType: "producer" | "consumer",
+) => ({
+   id: container?.id,
+   name: container?.name,
+   audio: {
+      mediaStream: {
+         id: container?.audio?.mediaStream.id,
+         inactive: container?.audio?.mediaStream.inactive,
+         paused: container?.audio?.mediaStream.paused,
+      },
+      producer: {
+         id: container?.audio?.[containerType].id,
+         paused: container?.audio?.[containerType].paused,
+         appData: container?.audio?.[containerType].appData,
+      },
+   },
+   video: {
+      mediaStream: {
+         id: container?.video?.mediaStream.id,
+         inactive: container?.video?.mediaStream.inactive,
+         paused: container?.video?.mediaStream.paused,
+      },
+      producer: {
+         id: container?.video?.[containerType].id,
+         paused: container?.video?.[containerType].paused,
+         appData: container?.video?.[containerType].appData,
+      },
+   },
+})
+
 const useDebug = ({
    socket,
    consumerTransport,
    producerTransport,
-   producerContainers,
+   producerContainer,
    consumerContainers,
    dataConsumerContainers,
    dataProducerContainers,
@@ -15,7 +47,7 @@ const useDebug = ({
    socket: Socket
    consumerTransport: Transport | null
    producerTransport: Transport | null
-   producerContainers
+   producerContainer
    consumerContainers
    dataConsumerContainers
    dataProducerContainers
@@ -36,26 +68,10 @@ const useDebug = ({
             closed: producerTransport?.closed,
             appData: producerTransport?.appData,
          },
-         producerContainers: producerContainers.map((c) => ({
-            id: c.producer.id,
-            paused: c.producer.paused,
-            appData: c.producer.appData,
-            mediaStream: {
-               id: c.mediaStream.id,
-               inactive: c.mediaStream.inactive,
-               paused: c.mediaStream.paused,
-            },
-         })),
-         consumerContainers: consumerContainers.map((c) => ({
-            id: c.consumer.id,
-            paused: c.consumer.paused,
-            appData: c.consumer.appData,
-            mediaStream: {
-               id: c.mediaStream.id,
-               inactive: c.mediaStream.inactive,
-               paused: c.mediaStream.paused,
-            },
-         })),
+         producerContainer: containerMapper(producerContainer, "producer"),
+         consumerContainers: consumerContainers.map((c) =>
+            containerMapper(c, "consumer"),
+         ),
          dataProducerContainers: dataProducerContainers.map((c) => ({
             id: c.dataProducer.id,
             type: c.type,

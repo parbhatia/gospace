@@ -7,6 +7,7 @@ import createMediaStreamFromTrack from "../helpers/createMediaStreamFromTrack"
 import {
    ConsumerUpdateType,
    ConsumeServerConsumeParams,
+   ConsumerContainer,
    TransportDataType,
 } from "../types"
 import { UserMeta } from "../types"
@@ -27,13 +28,7 @@ const useConsumers = ({
    initializeConsumerTransport: any
 }) => {
    const [consumerContainers, setConsumerContainers] = useState<
-      Array<{
-         // audioStream: MediaStream
-         peerId: string
-         mediaStream: MediaStream
-         consumer: Consumer
-         name: string
-      }>
+      Array<ConsumerContainer>
    >([])
 
    const initConsumeMedia = async ({
@@ -48,17 +43,44 @@ const useConsumers = ({
       appData: any
    }) => {
       try {
-         const newConsumerContainer = await createConsumer({
+         const newConsumerObject = await createConsumer({
             peerId,
             peerName,
             producerId,
             appData,
          })
-
-         setConsumerContainers((prevState) => [
-            ...prevState,
-            newConsumerContainer,
-         ])
+         const peerExists = consumerContainers.filter(
+            (c: ConsumerContainer) => c.id === newConsumerObject.peerId,
+         )[0]
+         if (!peerExists) {
+            setConsumerContainers((prevState) => [
+               ...prevState,
+               {
+                  id: newConsumerObject.peerId,
+                  name: newConsumerObject.name,
+                  [newConsumerObject.consumer.appData.dataType]: {
+                     consumer: newConsumerObject.consumer,
+                     mediaStream: newConsumerObject.mediaStream,
+                  },
+               },
+            ])
+         } else {
+            setConsumerContainers((prevState) =>
+               prevState.map((container) => {
+                  if (container.id === newConsumerObject.peerId) {
+                     return {
+                        ...container,
+                        [newConsumerObject.consumer.appData.dataType]: {
+                           consumer: newConsumerObject.consumer,
+                           mediaStream: newConsumerObject.mediaStream,
+                        },
+                     }
+                  } else {
+                     return { ...container }
+                  }
+               }),
+            )
+         }
       } catch (err) {
          console.error("Failed to consume media from producer", err)
          //Show failed to consume media from new producer message
@@ -153,13 +175,13 @@ const useConsumers = ({
                   removeConsumer(consumer.id)
                })
 
-               const newConsumerContainer = {
+               const newConsumerObject = {
                   mediaStream: stream,
                   consumer,
                   name: peerName,
                   peerId,
                }
-               resolve(newConsumerContainer)
+               resolve(newConsumerObject)
             },
          )
       })
@@ -168,25 +190,53 @@ const useConsumers = ({
    const removeConsumer = (consumerId: string) => {
       //Media streams will close via un mount cleanup
       setConsumerContainers((oldContainers) =>
-         oldContainers.filter((c) => c.consumer.id !== consumerId),
+         oldContainers
+            .map((c) => {
+               if (c.video?.consumer.id === consumerId) {
+                  return {
+                     ...c,
+                     video: null,
+                  }
+               } else if (c.audio?.consumer.id === consumerId) {
+                  return {
+                     ...c,
+                     audio: null,
+                  }
+               } else {
+                  return c
+               }
+            })
+            .filter((c) => c.video !== null && c.audio !== null),
       )
    }
 
    const pauseConsumer = (consumerId: string) => {
-      consumerContainers.forEach((c) => {
-         if (c.consumer.id === consumerId) {
-            c.consumer.pause()
-            c.mediaStream.getTracks()[0].enabled = false
+      const newState = Object.assign([], consumerContainers)
+      newState.map((c) => {
+         if (c.video?.consumer.id === consumerId) {
+            c.video.consumer.pause()
+            c.video.mediaStream.getTracks()[0].enabled = false
+         } else if (c.audio?.consumer.id === consumerId) {
+            c.audio.consumer.pause()
+            c.audio.mediaStream.getTracks()[0].enabled = false
          }
+         return c
       })
+      setConsumerContainers(newState)
    }
    const resumeConsumer = (consumerId: string) => {
-      consumerContainers.forEach((c) => {
-         if (c.consumer.id === consumerId) {
-            c.consumer.resume()
-            c.mediaStream.getTracks()[0].enabled = true
+      const newState = Object.assign([], consumerContainers)
+      newState.map((c) => {
+         if (c.video?.consumer.id === consumerId) {
+            c.video.consumer.resume()
+            c.video.mediaStream.getTracks()[0].enabled = true
+         } else if (c.audio?.consumer.id === consumerId) {
+            c.audio.consumer.resume()
+            c.audio.mediaStream.getTracks()[0].enabled = true
          }
+         return c
       })
+      setConsumerContainers(newState)
    }
 
    //If consumer updates, notify backend to sync changes

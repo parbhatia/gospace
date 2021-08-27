@@ -8,7 +8,7 @@ export default ({
    socket: Socket
    roomFactory: RoomFactory
 }) => {
-   socket.on("producerUpdate", async (msg) => {
+   socket.on("producerUpdate", async (msg, callback) => {
       const {
          roomId,
          userMeta,
@@ -23,11 +23,14 @@ export default ({
       console.log(`Peer ${userMeta.name}'s producer update ${updateType}`)
       if (roomFactory.roomExists(roomId) && producerId) {
          const roomOfPeer = roomFactory.getRoom(roomId)!
-         await roomOfPeer.getPeer(userMeta).handleEntityUpdate({
-            peerEntityType: "Producer",
-            peerEntityUpdateType: updateType,
-            id: producerId,
-         })
+         const status: boolean | undefined | null = await roomOfPeer
+            .getPeer(userMeta)
+            .handleEntityUpdate({
+               peerEntityType: "Producer",
+               peerEntityUpdateType: updateType,
+               id: producerId,
+            })
+         callback(status)
       }
       console.log(
          `Peer ${userMeta.name}'s producer successfully updated ${updateType}`,

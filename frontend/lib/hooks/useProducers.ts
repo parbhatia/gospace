@@ -1,14 +1,21 @@
-import { Producer } from "mediasoup-client/lib/Producer"
+import { Device } from "mediasoup-client"
 import { Transport } from "mediasoup-client/lib/Transport"
 import { useState } from "react"
 import { Socket } from "socket.io-client"
+import { AUDIO_CONSTRAINTS, VIDEO_CONSTRAINTS } from "../../config"
 import createMediaStream from "../helpers/createMediaStream"
-import { ProducerUpdateType, TransportDataType, UserMeta } from "../types"
+import {
+   ProducerContainer,
+   ProducerUpdateType,
+   TransportDataType,
+   UserMeta,
+} from "../types"
 
 const useProducers = ({
    userMeta,
    roomId,
    socket,
+   mediaSoupDevice,
    producerTransport,
    initializeProducerTransport,
    closeProducerTransport,
@@ -16,13 +23,40 @@ const useProducers = ({
    userMeta: UserMeta
    roomId: string
    socket: Socket
+   mediaSoupDevice: Device
    producerTransport: any
    initializeProducerTransport: any
    closeProducerTransport: any
 }) => {
-   const [producerContainers, setProducerContainers] = useState<
-      Array<{ mediaStream: MediaStream; producer: Producer; name: string }>
-   >([])
+   const checkDeviceProduceCapability = (kind: "audio" | "video"): boolean => {
+      if (!mediaSoupDevice || !mediaSoupDevice.canProduce(kind)) {
+         console.log("Cannot produce using this device, invalid device")
+         // setErrors({ ...errors, MediaError: true })
+         return false
+      }
+      return true
+   }
+
+   const createAudioProducer = async () => {
+      if (checkDeviceProduceCapability("audio")) {
+         await createProducer({
+            mediaConstraints: AUDIO_CONSTRAINTS,
+            transportDataType: "audio",
+         })
+      }
+   }
+
+   const createVideoProducer = async () => {
+      if (checkDeviceProduceCapability("video")) {
+         await createProducer({
+            mediaConstraints: VIDEO_CONSTRAINTS,
+            transportDataType: "video",
+         })
+      }
+   }
+
+   const [producerContainer, setProducerContainer] =
+      useState<ProducerContainer>({})
    const createProducer = async ({
       mediaConstraints,
       transportDataType,
@@ -81,64 +115,99 @@ const useProducers = ({
                removeProducer(producer.id)
             })
 
-            const newProducerContainer = {
+            const newProducerObject = {
                mediaStream: stream,
                producer,
-               name: "",
             }
-            setProducerContainers((prevState) => [
-               ...prevState,
-               newProducerContainer,
-            ])
-            resolve(newProducerContainer)
+
+            if (producerContainer.id) {
+               setProducerContainer((prevState) => ({
+                  ...prevState,
+                  [newProducerObject.producer.appData.dataType]: {
+                     producer: newProducerObject.producer,
+                     mediaStream: newProducerObject.mediaStream,
+                  },
+               }))
+            } else {
+               setProducerContainer((prevState) => ({
+                  id: userMeta.id,
+                  name: userMeta.name,
+                  [newProducerObject.producer.appData.dataType]: {
+                     producer: newProducerObject.producer,
+                     mediaStream: newProducerObject.mediaStream,
+                  },
+               }))
+            }
+            resolve({})
          } catch (e) {
             reject(e)
          }
       })
    }
 
-   const updateProducerOfType = (
+   const updateProducerOfType = async (
       transportDataType: TransportDataType,
       updateType: ProducerUpdateType,
    ) => {
-      producerContainers.forEach((c) => {
-         if (c.producer.appData.dataType === transportDataType) {
-            if (updateType === "pause") {
-               c.producer.pause()
-            } else if (updateType === "resume") {
-               c.producer.resume()
-            } else {
-               return
-            }
-            signalProducerUpdate(c.producer.id, updateType)
-         }
-      })
+      const newState = Object.assign({}, producerContainer)
+      if (updateType === "pause") {
+         newState[transportDataType]?.producer.pause()
+      } else if (updateType === "resume") {
+         newState[transportDataType]?.producer.resume()
+      }
+      setProducerContainer(newState)
+      const status = await signalProducerUpdate(
+         newState[transportDataType]?.producer.id,
+         updateType,
+      )
+      return status
    }
 
    const removeProducer = (producerId: string) => {
       //Media streams will close via un mount cleanup
-      setProducerContainers((oldContainers) =>
-         oldContainers.filter((p) => p.producer.id !== producerId),
-      )
+      setProducerContainer((oldContainer) => {
+         if (oldContainer.video?.producer.id === producerId) {
+            return {
+               ...oldContainer,
+               video: null,
+            }
+         } else if (oldContainer.audio?.producer.id === producerId) {
+            return {
+               ...oldContainer,
+               audio: null,
+            }
+         } else {
+            return oldContainer
+         }
+      })
    }
 
    //If producer updates, notify backend to sync changes
    const signalProducerUpdate = (
       producerId: string,
       updateType: ProducerUpdateType,
-   ) => {
-      socket.emit("producerUpdate", {
-         userMeta,
-         roomId,
-         producerId,
-         updateType,
-      })
-   }
+   ): Promise<boolean | null | undefined> =>
+      new Promise((resolve) =>
+         socket.emit(
+            "producerUpdate",
+            {
+               userMeta,
+               roomId,
+               producerId,
+               updateType,
+            },
+            (status) => {
+               resolve(status)
+            },
+         ),
+      )
 
    return {
-      producerContainers,
+      producerContainer,
       createProducer,
       updateProducerOfType,
+      createVideoProducer,
+      createAudioProducer,
    }
 }
 

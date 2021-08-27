@@ -6,14 +6,14 @@ const useSvgAvatar = (seed: string | null) => {
    const iconSvgString = createAvatar(style, {
       seed: seed ? seed : new Date().toLocaleString(),
       // ... and other options
-      width: 35,
-      height: 35,
+      width: 45,
+      height: 45,
       bold: true,
    })
    const svgRef = useRef() as React.MutableRefObject<HTMLInputElement>
    useEffect(() => {
       svgRef.current!.innerHTML = iconSvgString
-   }, [])
+   }, [seed])
    return {
       svgRef,
    }
