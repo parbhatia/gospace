@@ -12,4 +12,7 @@ export const VIDEO_CONSTRAINTS = {
 export const AUDIO_CONSTRAINTS = {
    video: false,
    audio: true,
+   //  audio: {
+   //       echoCancellation: true,
+   //    },
 }
