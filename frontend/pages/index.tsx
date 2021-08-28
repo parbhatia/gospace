@@ -180,121 +180,130 @@ export default function Home() {
       dataProducerContainers,
    })
    return (
-      <SocketContext.Provider value={socket}>
-         <main className="p-2 m-2">
-            <div className="flex flex-col w-full mb-5 text-center">
-               <h1 className="p-1 text-2xl font-medium text-gray-900 title-font">
-                  {roomInfo.name}
-               </h1>
-               <p className="p-1 mx-auto mb-2 text-base leading-relaxed lg:w-2/3">
-                  {roomInfo.totalPeers} peers
-               </p>
-               <StatusComponent connectionStatus={connectionStatus} />
-            </div>
+      <div className="h-full body-font">
 
-            <div>
-               <div className="flex flex-wrap justify-center">
+
+         <SocketContext.Provider value={socket}>
+            <main className="grid min-h-screen grid-cols-4 gap-4 p-2 ">
+               <div className="col-span-4 row-span-2">
+
+                  <div className="flex flex-col w-full mb-5 text-center">
+                     <h1 className="p-1 text-2xl font-medium text-gray-900 title-font">
+                        {roomInfo.name}
+                     </h1>
+                     <p className="p-1 mx-auto mb-2 text-base leading-relaxed lg:w-2/3">
+                        {roomInfo.totalPeers} peers
+                     </p>
+                     <StatusComponent connectionStatus={connectionStatus} />
+                  </div>
+
+                  <div>
+                     <div className="flex flex-wrap justify-center">
+                        <Button
+                           onClick={async () => {
+                              socketConnect()
+                           }}
+                        >
+                           <ReconnectIcon />
+                           <span className="ml-1"> Reconnect</span>
+                        </Button>
+                     </div>
+                  </div>
+                  <div className="m-1">
+                     <CanvasManager
+                        handleOpenRoomCanvas={handleOpenRoomCanvas}
+                        handleCloseRoomCanvas={handleCloseRoomCanvas}
+                     >
+                        <Canvas canvasRef={canvasRef} onChange={sendCanvasData} />
+                     </CanvasManager>
+                  </div>
+               </div>
+
+               {/* <div className="col-span-4 row-span-9"> */}
+
+               <MediaManager
+                  transportType="producer"
+                  containers={[producerContainer]}
+                  updateProducerOfType={updateProducerOfType}
+                  createVideoProducer={createVideoProducer}
+                  createAudioProducer={createAudioProducer}
+               />
+
+
+               <MediaManager
+                  transportType="consumer"
+                  containers={consumerContainers}
+                  updateProducerOfType={null}
+                  createVideoProducer={null}
+                  createAudioProducer={null}
+               />
+               {/* </div> */}
+
+
+               <div className="col-span-4 row-span-1">
                   <Button
                      onClick={async () => {
-                        socketConnect()
+                        setDebugMode((prev) => !prev)
                      }}
                   >
-                     <ReconnectIcon />
-                     <span className="ml-1"> Reconnect</span>
+                     Debug
                   </Button>
+                  <Button
+                     onClick={() => {
+                        socket.emit("debug", { roomId: roomInfo.id, userMeta })
+                     }}
+                  >
+                     Debug Backend
+                  </Button>
+                  {debugMode && (
+                     <>
+                        <div className="flex flex-wrap">
+                           <Button
+                              onClick={() => {
+                                 producerContainer.audio?.producer.close()
+                                 producerContainer.video?.producer.close()
+                              }}
+                           >
+                              Disconnect Producers
+                           </Button>
+                           <Button
+                              onClick={() => {
+                                 consumerContainers.forEach((p) => {
+                                    p.audio?.consumer.close()
+                                    p.video?.consumer.close()
+                                 })
+                              }}
+                           >
+                              Disconnect Producers
+                           </Button>
+                           <Button
+                              onClick={() => {
+                                 closeProducerTransport()
+                              }}
+                           >
+                              Disconnect Producer Transport
+                           </Button>
+                           <Button
+                              onClick={() => {
+                                 closeConsumerTransport()
+                              }}
+                           >
+                              Disconnect Consumer Transport
+                           </Button>
+                           <Button
+                              onClick={() => {
+                                 closeSocket()
+                              }}
+                           >
+                              Disconnect Socket
+                           </Button>
+                        </div>
+                        <pre>{JSON_DEBUG_STATEMENT}</pre>
+                     </>
+                  )}
                </div>
-            </div>
-            <div className="m-1">
-               <CanvasManager
-                  handleOpenRoomCanvas={handleOpenRoomCanvas}
-                  handleCloseRoomCanvas={handleCloseRoomCanvas}
-               >
-                  <Canvas canvasRef={canvasRef} onChange={sendCanvasData} />
-               </CanvasManager>
-            </div>
-            <section className="text-gray-600 body-font">
-               <div className='s:w-full sm:w-full md:w-1/2'>
-                  <MediaManager
-                     transportType="producer"
-                     containers={[producerContainer]}
-                     updateProducerOfType={updateProducerOfType}
-                     createVideoProducer={createVideoProducer}
-                     createAudioProducer={createAudioProducer}
-                  />
-               </div>
-               <div className="container px-5 py-24 mx-auto">
-                  <div className="container mx-auto space-y-2 lg:space-y-0 lg:gap-2 lg:grid lg:grid-cols-3">
-                     <MediaManager
-                        transportType="consumer"
-                        containers={consumerContainers}
-                        updateProducerOfType={null}
-                        createVideoProducer={null}
-                        createAudioProducer={null}
-                     />
-                  </div>
-               </div>
-            </section>
-            <Button
-               onClick={async () => {
-                  setDebugMode((prev) => !prev)
-               }}
-            >
-               Debug
-            </Button>
-            <Button
-               onClick={() => {
-                  socket.emit("debug", { roomId: roomInfo.id, userMeta })
-               }}
-            >
-               Debug Backend
-            </Button>
-            {debugMode && (
-               <>
-                  <div className="flex flex-wrap">
-                     <Button
-                        onClick={() => {
-                           producerContainer.audio?.producer.close()
-                           producerContainer.video?.producer.close()
-                        }}
-                     >
-                        Disconnect Producers
-                     </Button>
-                     <Button
-                        onClick={() => {
-                           consumerContainers.forEach((p) => {
-                              p.audio?.consumer.close()
-                              p.video?.consumer.close()
-                           })
-                        }}
-                     >
-                        Disconnect Producers
-                     </Button>
-                     <Button
-                        onClick={() => {
-                           closeProducerTransport()
-                        }}
-                     >
-                        Disconnect Producer Transport
-                     </Button>
-                     <Button
-                        onClick={() => {
-                           closeConsumerTransport()
-                        }}
-                     >
-                        Disconnect Consumer Transport
-                     </Button>
-                     <Button
-                        onClick={() => {
-                           closeSocket()
-                        }}
-                     >
-                        Disconnect Socket
-                     </Button>
-                  </div>
-                  <pre>{JSON_DEBUG_STATEMENT}</pre>
-               </>
-            )}
-         </main>
-      </SocketContext.Provider>
+            </main>
+         </SocketContext.Provider>
+      </div>
    )
 }

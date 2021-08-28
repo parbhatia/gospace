@@ -1,29 +1,9 @@
-import { createAvatar } from "@dicebear/avatars"
-import * as style from "@dicebear/avatars-initials-sprites"
-import { useEffect, useRef } from "react"
-
-const useSvgAvatar = (seed: string | null) => {
-   const iconSvgString = createAvatar(style, {
-      seed: seed ? seed : new Date().toLocaleString(),
-      // ... and other options
-      width: 45,
-      height: 45,
-      bold: true,
-      radius: 50
-   })
-   const svgRef = useRef() as React.MutableRefObject<HTMLInputElement>
-   useEffect(() => {
-      svgRef.current!.innerHTML = iconSvgString
-   }, [seed])
-   return {
-      svgRef,
-   }
-}
+import useSvgAvatar from "../hooks/useSvgAvatar"
 
 const AvatarComponent = ({ name }: { name: string | null }) => {
    const { svgRef } = useSvgAvatar(name)
    return (
-      <div className={`w-full flex items-center pt-1`}>
+      <div className={`w-full flex items-center`}>
          <div className="mr-2" ref={svgRef}></div>
          <div className="">
             <h2 className="text-xl font-bold text-gray-900 title-font">
