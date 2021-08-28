@@ -23,7 +23,7 @@ const useProducers = ({
    userMeta: UserMeta
    roomId: string
    socket: Socket
-   mediaSoupDevice: Device
+   mediaSoupDevice: Device | null
    producerTransport: any
    initializeProducerTransport: any
    closeProducerTransport: any
@@ -56,7 +56,7 @@ const useProducers = ({
    }
 
    const [producerContainer, setProducerContainer] =
-      useState<ProducerContainer>({})
+      useState<ProducerContainer>({ })
    const createProducer = async ({
       mediaConstraints,
       transportDataType,
@@ -138,7 +138,7 @@ const useProducers = ({
                   },
                }))
             }
-            resolve({})
+            resolve({ })
          } catch (e) {
             reject(e)
          }
@@ -149,32 +149,34 @@ const useProducers = ({
       transportDataType: TransportDataType,
       updateType: ProducerUpdateType,
    ) => {
-      const newState = Object.assign({}, producerContainer)
+      const newState = Object.assign({ }, producerContainer)
       if (updateType === "pause") {
          newState[transportDataType]?.producer.pause()
       } else if (updateType === "resume") {
          newState[transportDataType]?.producer.resume()
       }
       setProducerContainer(newState)
-      const status = await signalProducerUpdate(
-         newState[transportDataType]?.producer.id,
-         updateType,
-      )
-      return status
+      if (newState[transportDataType]?.producer.id) {
+         const status = await signalProducerUpdate(
+            newState[transportDataType]?.producer.id!,
+            updateType,
+         )
+         return status
+      } return null
    }
 
    const removeProducer = (producerId: string) => {
       //Media streams will close via un mount cleanup
-      setProducerContainer((oldContainer) => {
+      setProducerContainer((oldContainer: ProducerContainer) => {
          if (oldContainer.video?.producer.id === producerId) {
             return {
                ...oldContainer,
-               video: null,
+               video: undefined,
             }
          } else if (oldContainer.audio?.producer.id === producerId) {
             return {
                ...oldContainer,
-               audio: null,
+               audio: undefined,
             }
          } else {
             return oldContainer
@@ -204,7 +206,6 @@ const useProducers = ({
 
    return {
       producerContainer,
-      createProducer,
       updateProducerOfType,
       createVideoProducer,
       createAudioProducer,

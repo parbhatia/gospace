@@ -9,6 +9,7 @@ const useSvgAvatar = (seed: string | null) => {
       width: 45,
       height: 45,
       bold: true,
+      radius: 50
    })
    const svgRef = useRef() as React.MutableRefObject<HTMLInputElement>
    useEffect(() => {

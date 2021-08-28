@@ -5,7 +5,7 @@ const Video = ({
 }) => {
    return (
       <video
-         className="border-4 border-black shadow-lg"
+         className="w-full border-4 border-black shadow-lg"
          muted
          loop
          autoPlay

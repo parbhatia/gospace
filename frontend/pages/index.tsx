@@ -20,14 +20,13 @@ import ReconnectIcon from "../assets/redo.svg"
 export default function Home() {
    const socket = useContext(SocketContext)
    const [id] = useState(() => getRandomId().toString())
-   const [toggleRoomCanvas, setToggleRoomCanvas] = useState(false)
    const { roomInfo, handleRoomUpdate } = useMonitorRoom() //use this hook one level higher
    const [userMeta, setUserMeta] = useState({
       id: id,
       name: id,
    })
    const [debugMode, setDebugMode] = useState(false)
-   const [errors, setErrors] = useState({})
+   const [errors, setErrors] = useState({ })
    const {
       mediaSoupDevice,
       producerTransport,
@@ -52,7 +51,6 @@ export default function Home() {
       })
    const {
       producerContainer,
-      createProducer,
       updateProducerOfType,
       createVideoProducer,
       createAudioProducer,
@@ -117,6 +115,7 @@ export default function Home() {
    const handleCloseRoomCanvas = async () => {
       //resume all producers for video
       await updateProducerOfType("video", "resume")
+
       //close data producer for canvas data
       await closeRoomCanvas()
    }
@@ -171,26 +170,6 @@ export default function Home() {
       return () => closeSocket()
    }, [])
 
-   const debug = () => {
-      console.log("")
-      console.log("ProducerTransport:")
-      console.log(producerTransport?.id)
-      console.log("")
-      console.log("")
-      console.log("ConsumerTransport:")
-      console.log(consumerTransport?.id)
-      console.log("")
-      console.log("ProducerContainer:")
-      console.log(producerContainer)
-      // producerContainers.forEach(async (p, i) => {
-      //    console.log(p.name, p.mediaStream)
-      // })
-      console.log("ConsumersContainers:")
-      consumerContainers.forEach(async (p, i) => {
-         console.log(p.name, p.mediaStream)
-      })
-      console.log("")
-   }
    const JSON_DEBUG_STATEMENT = useDebug({
       socket,
       consumerTransport,
@@ -234,17 +213,16 @@ export default function Home() {
                </CanvasManager>
             </div>
             <section className="text-gray-600 body-font">
+               <div className='s:w-full sm:w-full md:w-1/2'>
+                  <MediaManager
+                     transportType="producer"
+                     containers={[producerContainer]}
+                     updateProducerOfType={updateProducerOfType}
+                     createVideoProducer={createVideoProducer}
+                     createAudioProducer={createAudioProducer}
+                  />
+               </div>
                <div className="container px-5 py-24 mx-auto">
-                  <div>
-                     <MediaManager
-                        transportType="producer"
-                        containers={[producerContainer]}
-                        updateProducerOfType={updateProducerOfType}
-                        createVideoProducer={createVideoProducer}
-                        createAudioProducer={createAudioProducer}
-                     />
-                  </div>
-
                   <div className="container mx-auto space-y-2 lg:space-y-0 lg:gap-2 lg:grid lg:grid-cols-3">
                      <MediaManager
                         transportType="consumer"
@@ -265,7 +243,6 @@ export default function Home() {
             </Button>
             <Button
                onClick={() => {
-                  debug()
                   socket.emit("debug", { roomId: roomInfo.id, userMeta })
                }}
             >

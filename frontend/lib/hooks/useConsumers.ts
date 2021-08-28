@@ -5,12 +5,9 @@ import { useCallback, useState } from "react"
 import { Socket } from "socket.io-client"
 import createMediaStreamFromTrack from "../helpers/createMediaStreamFromTrack"
 import {
-   ConsumerUpdateType,
-   ConsumeServerConsumeParams,
-   ConsumerContainer,
-   TransportDataType,
+   ConsumerContainer, ConsumerUpdateType,
+   ConsumeServerConsumeParams, UserMeta
 } from "../types"
-import { UserMeta } from "../types"
 
 const useConsumers = ({
    userMeta,
@@ -49,38 +46,41 @@ const useConsumers = ({
             producerId,
             appData,
          })
-         const peerExists = consumerContainers.filter(
-            (c: ConsumerContainer) => c.id === newConsumerObject.peerId,
-         )[0]
-         if (!peerExists) {
-            setConsumerContainers((prevState) => [
-               ...prevState,
-               {
-                  id: newConsumerObject.peerId,
-                  name: newConsumerObject.name,
-                  [newConsumerObject.consumer.appData.dataType]: {
-                     consumer: newConsumerObject.consumer,
-                     mediaStream: newConsumerObject.mediaStream,
+         setConsumerContainers((prevState) => {
+            //careful not to filter prevState outside of setConsumerContainers, since setConsumerContainers is asynchronous, and a rapidfire calling of initConsumeMedia, when the user first joins room and asks for producers, will mean we fail to detect existing consumers
+            const peerExists = prevState.filter(
+               (c: ConsumerContainer) => c.id === newConsumerObject.peerId,
+            )[0]
+            if (!peerExists) {
+               return [
+                  ...prevState,
+                  {
+                     id: newConsumerObject.peerId,
+                     name: newConsumerObject.name,
+                     [newConsumerObject.consumer.appData.dataType]: {
+                        consumer: newConsumerObject.consumer,
+                        mediaStream: newConsumerObject.mediaStream,
+                     },
                   },
-               },
-            ])
-         } else {
-            setConsumerContainers((prevState) =>
-               prevState.map((container) => {
-                  if (container.id === newConsumerObject.peerId) {
-                     return {
-                        ...container,
-                        [newConsumerObject.consumer.appData.dataType]: {
-                           consumer: newConsumerObject.consumer,
-                           mediaStream: newConsumerObject.mediaStream,
-                        },
+               ]
+            } else {
+               return (
+                  prevState.map((container) => {
+                     if (container.id === newConsumerObject.peerId) {
+                        return {
+                           ...container,
+                           [newConsumerObject.consumer.appData.dataType]: {
+                              consumer: newConsumerObject.consumer,
+                              mediaStream: newConsumerObject.mediaStream,
+                           },
+                        }
+                     } else {
+                        return { ...container }
                      }
-                  } else {
-                     return { ...container }
-                  }
-               }),
-            )
-         }
+                  })
+               )
+            }
+         })
       } catch (err) {
          console.error("Failed to consume media from producer", err)
          //Show failed to consume media from new producer message
@@ -195,12 +195,12 @@ const useConsumers = ({
                if (c.video?.consumer.id === consumerId) {
                   return {
                      ...c,
-                     video: null,
+                     video: undefined,
                   }
                } else if (c.audio?.consumer.id === consumerId) {
                   return {
                      ...c,
-                     audio: null,
+                     audio: undefined,
                   }
                } else {
                   return c
@@ -211,32 +211,32 @@ const useConsumers = ({
    }
 
    const pauseConsumer = (consumerId: string) => {
-      const newState = Object.assign([], consumerContainers)
-      newState.map((c) => {
-         if (c.video?.consumer.id === consumerId) {
-            c.video.consumer.pause()
-            c.video.mediaStream.getTracks()[0].enabled = false
-         } else if (c.audio?.consumer.id === consumerId) {
-            c.audio.consumer.pause()
-            c.audio.mediaStream.getTracks()[0].enabled = false
-         }
-         return c
+      setConsumerContainers((oldState) => {
+         return oldState.map((c: ConsumerContainer) => {
+            if (c.video?.consumer.id === consumerId) {
+               c.video.consumer.pause()
+               c.video.mediaStream.getTracks()[0].enabled = false
+            } else if (c.audio?.consumer.id === consumerId) {
+               c.audio.consumer.pause()
+               c.audio.mediaStream.getTracks()[0].enabled = false
+            }
+            return c
+         })
       })
-      setConsumerContainers(newState)
    }
    const resumeConsumer = (consumerId: string) => {
-      const newState = Object.assign([], consumerContainers)
-      newState.map((c) => {
-         if (c.video?.consumer.id === consumerId) {
-            c.video.consumer.resume()
-            c.video.mediaStream.getTracks()[0].enabled = true
-         } else if (c.audio?.consumer.id === consumerId) {
-            c.audio.consumer.resume()
-            c.audio.mediaStream.getTracks()[0].enabled = true
-         }
-         return c
+      setConsumerContainers((oldState) => {
+         return oldState.map((c: ConsumerContainer) => {
+            if (c.video?.consumer.id === consumerId) {
+               c.video.consumer.resume()
+               c.video.mediaStream.getTracks()[0].enabled = true
+            } else if (c.audio?.consumer.id === consumerId) {
+               c.audio.consumer.resume()
+               c.audio.mediaStream.getTracks()[0].enabled = true
+            }
+            return c
+         })
       })
-      setConsumerContainers(newState)
    }
 
    //If consumer updates, notify backend to sync changes

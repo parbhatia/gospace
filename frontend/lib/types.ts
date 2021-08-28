@@ -28,11 +28,11 @@ export type DataProducerUpdateType = "close" | "pause" | "resume"
 export interface ConsumerContainer {
    id: string //this is the peerId from whom we are consuming from
    name: string
-   audio: {
+   audio?: {
       mediaStream: MediaStream
       consumer: Consumer
    }
-   video: {
+   video?: {
       mediaStream: MediaStream
       consumer: Consumer
    }
@@ -41,11 +41,11 @@ export interface ConsumerContainer {
 export interface ProducerContainer {
    id: string
    name: string
-   audio: {
+   audio?: {
       mediaStream: MediaStream
       producer: Producer
    }
-   video: {
+   video?: {
       mediaStream: MediaStream
       producer: Producer
    }

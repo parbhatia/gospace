@@ -10,7 +10,7 @@ const MediaDistributor = ({
    transportType: TransportType
    container
 }) => (
-   <div>
+   <>
       {container?.video ? (
          <MediaComponent
             name={container.peerName}
@@ -28,7 +28,7 @@ const MediaDistributor = ({
             mediaType="audio"
          />
       ) : null}
-   </div>
+   </>
 )
 
 const MediaManager = ({
@@ -73,9 +73,8 @@ const MediaManager = ({
       return (
          <>
             {containers.map((c) => (
-               <div>
+               <div key={c.id}>
                   <MediaDistributor
-                     key={c.id}
                      container={c}
                      transportType={transportType}
                   />

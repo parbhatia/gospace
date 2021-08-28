@@ -16,7 +16,7 @@ const useRoomCanvas = ({ createDataProducer }: { createDataProducer: any }) => {
    }
    const closeRoomCanvas = async () => {
       try {
-         if (canvasProducer) {
+         if (canvasProducer && !canvasProducer.closed) {
             await canvasProducer.close()
             // canvas consumers will close automatically because of how we listen to close events on data producers and consumers
          }

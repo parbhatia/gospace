@@ -168,6 +168,10 @@ const useDataConsumers = ({
          )
       })
 
+   // currently, data consumers on client side are closed by setting dataConsumers to null
+   // in the server side, data consumers are notified via data producer close, and are closed
+   // in the end, data consumers serverside and clientside are both closed, so this function is unnecessary, but nevertheless useful for flexibility 
+
    // handles remove data consumer request from backend
    const handleCloseDataConsumer = useCallback(
       (msg) => {
