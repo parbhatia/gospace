@@ -179,16 +179,13 @@ export default function Home() {
       dataConsumerContainers,
       dataProducerContainers,
    })
-   const workingGridStyle = "grid h-screen grid-flow-col grid-rows-custom auto-cols-auto"
    return (
       <div className="h-full body-font">
-
-
          <SocketContext.Provider value={socket}>
-            <main className="flex flex-wrap h-screen">
-               {/* <div className="col-span-4 row-span-1">
+            <main className="flex flex-col h-screen">
+               <div className="flex">
 
-                  <div className="flex w-full mb-5 text-center">
+                  <div className="flex w-full text-center">
                      <h1 className="p-1 text-2xl font-medium text-gray-900 title-font">
                         {roomInfo.name}
                      </h1>
@@ -218,28 +215,30 @@ export default function Home() {
                         <Canvas canvasRef={canvasRef} onChange={sendCanvasData} />
                      </CanvasManager>
                   </div>
-               </div> */}
-
-               {Array.from(Array(19).keys()).map(i => <MediaManager
-                  key={i}
-                  transportType="producer"
-                  containers={[producerContainer]}
-                  updateProducerOfType={updateProducerOfType}
-                  createVideoProducer={createVideoProducer}
-                  createAudioProducer={createAudioProducer}
-               />
-               )}
-
-               <MediaManager
-                  transportType="consumer"
-                  containers={consumerContainers}
-                  updateProducerOfType={null}
-                  createVideoProducer={null}
-                  createAudioProducer={null}
-               />
+               </div>
 
 
-               {/* <div className="col-span-4 row-span-1">
+               <div className="flex flex-wrap content-center h-full bg-yellow-200">
+                  {Array.from(Array(5).keys()).map(i => <MediaManager
+                     key={i}
+                     transportType="producer"
+                     containers={[producerContainer]}
+                     updateProducerOfType={updateProducerOfType}
+                     createVideoProducer={createVideoProducer}
+                     createAudioProducer={createAudioProducer}
+                  />
+                  )}
+
+               </div>
+               {/* <MediaManager
+                     transportType="consumer"
+                     containers={consumerContainers}
+                     updateProducerOfType={null}
+                     createVideoProducer={null}
+                     createAudioProducer={null}
+                  /> */}
+
+               <div className="flex">
                   <Button
                      onClick={async () => {
                         setDebugMode((prev) => !prev)
@@ -300,7 +299,7 @@ export default function Home() {
                         <pre>{JSON_DEBUG_STATEMENT}</pre>
                      </>
                   )}
-               </div> */}
+               </div>
             </main>
          </SocketContext.Provider>
       </div>

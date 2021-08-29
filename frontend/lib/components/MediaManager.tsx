@@ -45,49 +45,58 @@ const MediaManager = ({
    createAudioProducer: any
 }) => {
    if (transportType === "producer") {
-      return (
-         <div
-            className="self-stretch flex-auto w-full bg-red-400 border-2 md:w-1/2 lg:w-1/4 "
-         ></div>
-      )
       // return (
-      //    <div className="bg-red-400 border-2">
-      //       <MediaDistributor
-      //          container={containers[0]}
-      //          transportType={transportType}
-      //       />
-      //       <div className="flex items-center p-1 bg-gray-200">
-      //          <AvatarComponent name={containers[0].name} />
-      //          {/* <ProducerControls
-      //             updateProducerOfType={updateProducerOfType}
-      //             createVideoProducer={createVideoProducer}
-      //             createAudioProducer={createAudioProducer}
-      //             audioProducerCreated={
-      //                containers[0].audio !== null &&
-      //                containers[0].audio !== undefined
-      //             }
-      //             videoProducerCreated={
-      //                containers[0].video !== null &&
-      //                containers[0].video !== undefined
-      //             }
-      //          /> */}
-      //       </div>
-      //    </div>
+      //    <div
+      //       // style={{ 'flex-basis': '400px' }}
+      //       className="self-stretch flex-auto w-1/2 bg-red-400 border-4 lg:w-1/3 "
+      //    ></div>
       // )
-   } else {
       return (
-         <>
-            {containers.map((c) => (
-               <div key={c.id} className="">
-                  <MediaDistributor
-                     container={c}
-                     transportType={transportType}
-                  />
-                  <AvatarComponent name={c.name} />
-               </div>
-            ))}
-         </>
+         <div className="flex flex-col items-center flex-auto w-full border-4 md:w-1/2 lg:w-1/3">
+            <MediaDistributor
+               container={containers[0]}
+               transportType={transportType}
+            />
+            <div className="flex items-center p-1 bg-gray-200">
+               <AvatarComponent name={containers[0].name} />
+               {/* <ProducerControls
+                  updateProducerOfType={updateProducerOfType}
+                  createVideoProducer={createVideoProducer}
+                  createAudioProducer={createAudioProducer}
+                  audioProducerCreated={
+                     containers[0].audio !== null &&
+                     containers[0].audio !== undefined
+                  }
+                  videoProducerCreated={
+                     containers[0].video !== null &&
+                     containers[0].video !== undefined
+                  }
+               /> */}
+            </div>
+         </div>
       )
+   } else {
+      // return (
+      //    <>
+      //       {containers.map((c) => (
+      //          <div key={c.id} className="">
+      //             <MediaDistributor
+      //                container={c}
+      //                transportType={transportType}
+      //             />
+      //             <AvatarComponent name={c.name} />
+      //          </div>
+      //       ))}
+      //    </>
+      // )
+      return (
+         <div className="self-stretch w-full h-8 bg-red-700 border-2 ">
+            {
+               containers.map((c) => (
+                  <div
+                     className="h-8 bg-red-400 border-2 "
+                  ></div >))}
+         </div>)
    }
 }
 
