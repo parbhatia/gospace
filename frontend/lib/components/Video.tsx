@@ -1,16 +1,13 @@
 const Video = ({
    mediaRef,
+   paused
 }: {
+   paused: boolean
    mediaRef: React.MutableRefObject<HTMLVideoElement>
 }) => {
-   // return (
-   //    <div
-   //       className="w-32 bg-red-400"
-   //    ></div>
-   // )
    return (
       <video
-         className="border-4 border-black shadow-lg"
+         className={`${paused ? "animate-pulse" : ""} border-4 border-black shadow-lg `}
          muted
          loop
          autoPlay

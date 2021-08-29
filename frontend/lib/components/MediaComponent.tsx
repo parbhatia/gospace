@@ -109,16 +109,16 @@ const MediaComponent = ({
       }
    }, [])
    return (
-      <div className={`${paused ? " animate-pulse" : ""} `}>
+      <>
          {mediaType === "video" ? (
-            <Video mediaRef={mediaRef} />
+            <Video mediaRef={mediaRef} paused={paused} />
          ) : (
-            <div className="w-100">
+            <div className="w-full">
                <Audio mediaRef={mediaRef} />
                <MicrophoneLevel audioRef={volumeBarContextRef} />
             </div>
          )}
-      </div>
+      </>
    )
 }
 

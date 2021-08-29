@@ -46,6 +46,6 @@ const StatusComponent = ({
    connectionStatus,
 }: {
    connectionStatus: string
-}) => <div className="w-full">{ConnectionSwitch({ connectionStatus })}</div>
+}) => <div >{ConnectionSwitch({ connectionStatus })}</div>
 
 export default StatusComponent

@@ -1,8 +1,12 @@
 import { useCallback, useContext, useEffect, useState } from "react"
+import ReconnectIcon from "../assets/redo.svg"
 import Button from "../lib/components/Button"
 import Canvas from "../lib/components/Canvas"
 import CanvasManager from "../lib/components/CanvasManager"
-import MediaManager from "../lib/components/MediaManager"
+import ConsumerDistributor from "../lib/components/ConsumerDistributor"
+import MediaDistributor from "../lib/components/MediaDistributor"
+import ProducerControls from "../lib/components/ProducerControls"
+import ProducerDistributor from "../lib/components/ProducerDistributor"
 import StatusComponent from "../lib/components/StatusComponent"
 import getRandomId from "../lib/helpers/getRandomId"
 import useConnectToMediasoup from "../lib/hooks/useConnectToMediasoup"
@@ -15,7 +19,8 @@ import useMonitorRoom from "../lib/hooks/useMonitorRoom"
 import useProducers from "../lib/hooks/useProducers"
 import useRoomCanvas from "../lib/hooks/useRoomCanvas"
 import { SocketContext } from "../lib/socket"
-import ReconnectIcon from "../assets/redo.svg"
+
+
 
 export default function Home() {
    const socket = useContext(SocketContext)
@@ -179,12 +184,12 @@ export default function Home() {
       dataConsumerContainers,
       dataProducerContainers,
    })
-   return (
-      <div className="h-full body-font">
-         <SocketContext.Provider value={socket}>
-            <main className="flex flex-col h-screen">
-               <div className="flex">
 
+   return (
+      <div className="w-screen h-screen p-2 body-font">
+         <SocketContext.Provider value={socket}>
+            <main className="flex flex-col w-full h-full">
+               <div className="flex flex-col">
                   <div className="flex w-full text-center">
                      <h1 className="p-1 text-2xl font-medium text-gray-900 title-font">
                         {roomInfo.name}
@@ -218,41 +223,65 @@ export default function Home() {
                </div>
 
 
-               <div className="flex flex-wrap content-center h-full bg-yellow-200">
-                  {Array.from(Array(5).keys()).map(i => <MediaManager
-                     key={i}
-                     transportType="producer"
-                     containers={[producerContainer]}
-                     updateProducerOfType={updateProducerOfType}
-                     createVideoProducer={createVideoProducer}
-                     createAudioProducer={createAudioProducer}
-                  />
-                  )}
+               <ConsumerDistributor
+                  transportType="consumer"
+                  containers={Array.from(Array(4).keys()).map(i => producerContainer)}
+               />
 
-               </div>
-               {/* <MediaManager
+               {/* <div className="flex flex-col items-center flex-auto w-1/2 m-4 md:w-1/2 lg:w-1/4">
+                     <MediaDistributor
+                        container={producerContainer}
+                        transportType="producer"
+                     />
+                  </div> */}
+               {/*                   
+                  <ConsumerDistributor
+                     transportType="consumer"
+                     containers={consumerContainers}
+                  /> */}
+
+
+               {/* {Array.from(Array(5).keys()).map(i => <ConsumerDistributor
                      transportType="consumer"
                      containers={consumerContainers}
                      updateProducerOfType={null}
                      createVideoProducer={null}
                      createAudioProducer={null}
-                  /> */}
+                  />
+                  )} */}
 
-               <div className="flex">
-                  <Button
-                     onClick={async () => {
-                        setDebugMode((prev) => !prev)
-                     }}
-                  >
-                     Debug
-                  </Button>
-                  <Button
-                     onClick={() => {
-                        socket.emit("debug", { roomId: roomInfo.id, userMeta })
-                     }}
-                  >
-                     Debug Backend
-                  </Button>
+               <div className="absolute bottom-0 left-0 right-0 flex flex-col w-full">
+                  <ProducerDistributor producerContainer={producerContainer} />
+
+                  <ProducerControls
+                     updateProducerOfType={updateProducerOfType}
+                     createVideoProducer={createVideoProducer}
+                     createAudioProducer={createAudioProducer}
+                     audioProducerCreated={
+                        producerContainer.audio !== null &&
+                        producerContainer.audio !== undefined
+                     }
+                     videoProducerCreated={
+                        producerContainer.video !== null &&
+                        producerContainer.video !== undefined
+                     }
+                  />
+                  <div className="flex">
+                     <Button
+                        onClick={async () => {
+                           setDebugMode((prev) => !prev)
+                        }}
+                     >
+                        Debug
+                     </Button>
+                     <Button
+                        onClick={() => {
+                           socket.emit("debug", { roomId: roomInfo.id, userMeta })
+                        }}
+                     >
+                        Debug Backend
+                     </Button>
+                  </div>
                   {debugMode && (
                      <>
                         <div className="flex flex-wrap">
@@ -296,7 +325,7 @@ export default function Home() {
                               Disconnect Socket
                            </Button>
                         </div>
-                        <pre>{JSON_DEBUG_STATEMENT}</pre>
+                        <pre className="bg-white">{JSON_DEBUG_STATEMENT}</pre>
                      </>
                   )}
                </div>
