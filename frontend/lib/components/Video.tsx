@@ -3,9 +3,14 @@ const Video = ({
 }: {
    mediaRef: React.MutableRefObject<HTMLVideoElement>
 }) => {
+   // return (
+   //    <div
+   //       className="w-32 bg-red-400"
+   //    ></div>
+   // )
    return (
       <video
-         className="w-full border-4 border-black shadow-lg"
+         className="border-4 border-black shadow-lg"
          muted
          loop
          autoPlay

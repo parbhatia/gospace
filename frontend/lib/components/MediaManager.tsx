@@ -46,29 +46,34 @@ const MediaManager = ({
 }) => {
    if (transportType === "producer") {
       return (
-         <div className="">
-            <MediaDistributor
-               container={containers[0]}
-               transportType={transportType}
-            />
-            <div className="flex items-center p-1 bg-gray-200">
-               <AvatarComponent name={containers[0].name} />
-               <ProducerControls
-                  updateProducerOfType={updateProducerOfType}
-                  createVideoProducer={createVideoProducer}
-                  createAudioProducer={createAudioProducer}
-                  audioProducerCreated={
-                     containers[0].audio !== null &&
-                     containers[0].audio !== undefined
-                  }
-                  videoProducerCreated={
-                     containers[0].video !== null &&
-                     containers[0].video !== undefined
-                  }
-               />
-            </div>
-         </div>
+         <div
+            className="self-stretch flex-auto w-full bg-red-400 border-2 md:w-1/2 lg:w-1/4 "
+         ></div>
       )
+      // return (
+      //    <div className="bg-red-400 border-2">
+      //       <MediaDistributor
+      //          container={containers[0]}
+      //          transportType={transportType}
+      //       />
+      //       <div className="flex items-center p-1 bg-gray-200">
+      //          <AvatarComponent name={containers[0].name} />
+      //          {/* <ProducerControls
+      //             updateProducerOfType={updateProducerOfType}
+      //             createVideoProducer={createVideoProducer}
+      //             createAudioProducer={createAudioProducer}
+      //             audioProducerCreated={
+      //                containers[0].audio !== null &&
+      //                containers[0].audio !== undefined
+      //             }
+      //             videoProducerCreated={
+      //                containers[0].video !== null &&
+      //                containers[0].video !== undefined
+      //             }
+      //          /> */}
+      //       </div>
+      //    </div>
+      // )
    } else {
       return (
          <>
