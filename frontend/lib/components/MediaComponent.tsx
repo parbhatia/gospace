@@ -4,6 +4,7 @@ import Audio from "./Audio"
 import Video from "./Video"
 import tailwindConfig from "../../tailwind.config"
 import MicrophoneLevel from "./MicrophoneLevel"
+import VolumeMuteButton from "./VolumeMuteButton"
 
 const volumeBarColor = tailwindConfig.theme.extend.colors['volume-meter']
 
@@ -35,10 +36,18 @@ const MediaComponent = ({
          audioSource.connect(analyser)
          const volumes = new Uint8Array(analyser.frequencyBinCount)
 
+         const gainNode = audioContext.createGain()
+         console.log(gainNode.gain.value)
+
+         // pass audio element, which is our stream, into the audio context
+         const track = audioContext.createMediaElementSource(stream)
+         track.connect(gainNode).connect(audioContext.destination)
+
          //based off https://stackoverflow.com/a/64650826/13886575
          const volumeCallback = () => {
             analyser.getByteFrequencyData(volumes)
             let volumeSum = 0
+            // we are getting the frequency amplitudes, then taking a reasonable average
             for (const volume of volumes) volumeSum += volume
             const averageVolume = volumeSum / volumes.length
             const maxVolumeVal = analyser.maxDecibels - analyser.minDecibels
@@ -109,6 +118,7 @@ const MediaComponent = ({
             <div className="w-full">
                <Audio mediaRef={mediaRef} />
                <MicrophoneLevel audioRef={volumeBarContextRef} />
+               <VolumeMuteButton audioRef={mediaRef} />
             </div>
          )}
       </>
