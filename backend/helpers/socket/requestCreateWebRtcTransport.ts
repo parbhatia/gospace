@@ -1,6 +1,6 @@
 import { UserMeta, WebRtcTransportParams } from "../../types"
-import { Socket } from "socket.io"
-import RoomFactory from "../../RoomFactory"
+import type { Socket } from "socket.io"
+import type RoomFactory from "../../RoomFactory"
 
 export default ({
    socket,

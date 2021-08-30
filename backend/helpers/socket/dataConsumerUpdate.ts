@@ -1,6 +1,6 @@
-import { Socket } from "socket.io"
+import type { Socket } from "socket.io"
 import { PeerEntityUpdateType, UserMeta } from "../../types"
-import RoomFactory from "../../RoomFactory"
+import type RoomFactory from "../../RoomFactory"
 export default ({
    socket,
    roomFactory,

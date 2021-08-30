@@ -1,6 +1,6 @@
-import { RtpCapabilities } from "mediasoup/lib/types"
-import { Socket } from "socket.io"
-import RoomFactory from "../../RoomFactory"
+import type { RtpCapabilities } from "mediasoup/lib/types"
+import type { Socket } from "socket.io"
+import type RoomFactory from "../../RoomFactory"
 import { UserMeta } from "../../types"
 import debugm from "debug"
 const debug = debugm("app:addConsumer")

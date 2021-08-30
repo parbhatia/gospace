@@ -1,7 +1,7 @@
-import { DtlsParameters } from "mediasoup/src/WebRtcTransport"
+import type { DtlsParameters } from "mediasoup/src/WebRtcTransport"
 import { UserMeta } from "../../types"
-import { Socket } from "socket.io"
-import RoomFactory from "../../RoomFactory"
+import type { Socket } from "socket.io"
+import type RoomFactory from "../../RoomFactory"
 export default ({
    socket,
    roomFactory,

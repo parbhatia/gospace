@@ -1,5 +1,5 @@
-import { Socket } from "socket.io"
-import Room from "../Room"
+import type { Socket } from "socket.io"
+import type Room from "../Room"
 
 const sendRoomUpdate = async ({
    socket,

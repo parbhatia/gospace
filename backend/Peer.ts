@@ -1,5 +1,5 @@
-import { MediaKind, RtpParameters } from "mediasoup/lib/RtpParameters"
-import {
+import type { MediaKind, RtpParameters } from "mediasoup/lib/RtpParameters"
+import type {
    Router,
    Transport,
    DtlsParameters,
@@ -13,13 +13,13 @@ import {
    DataConsumer,
    SctpStreamParameters,
 } from "mediasoup/lib/types"
-import { Socket } from "socket.io"
-import { io } from "./main"
-import { PeerEntityType, PeerEntityUpdateType } from "./types"
+import type { Socket } from "socket.io"
+import { socketServer } from "./main"
+import type { PeerEntityType, PeerEntityUpdateType } from "./types"
 
 import mediasoupConfig from "./config/mediasoup"
-import Room from "./Room"
-import {
+import type Room from "./Room"
+import type {
    WebRtcTransportParams,
    UserMeta,
    ConsumeServerConsumeParams,
@@ -177,30 +177,30 @@ class Peer {
                this.consumers.delete(id)
                notifyClient
                   ? this.socket.emit("updateConsumer", {
-                       id,
-                       userMeta: this.userMeta,
-                       updateType: "close",
-                    })
+                     id,
+                     userMeta: this.userMeta,
+                     updateType: "close",
+                  })
                   : null
                break
             case "pause":
                await consumerToPause.pause()
                notifyClient
                   ? this.socket.emit("updateConsumer", {
-                       id,
-                       userMeta: this.userMeta,
-                       updateType: "pause",
-                    })
+                     id,
+                     userMeta: this.userMeta,
+                     updateType: "pause",
+                  })
                   : null
                break
             case "resume":
                await consumerToPause.resume()
                notifyClient
                   ? this.socket.emit("updateConsumer", {
-                       id,
-                       userMeta: this.userMeta,
-                       updateType: "resume",
-                    })
+                     id,
+                     userMeta: this.userMeta,
+                     updateType: "resume",
+                  })
                   : null
                break
             default:
@@ -457,7 +457,7 @@ class Peer {
             kind: newConsumer.kind,
             rtpParameters: newConsumer.rtpParameters,
             producerId,
-            appData: {},
+            appData: { },
          }
       } else {
          debug(
@@ -541,7 +541,7 @@ class Peer {
       )
       this.producers.forEach((producer) => {
          if (!producer.closed || !producer.paused) {
-            io.to(socketId).emit("newProducer", {
+            socketServer.to(socketId).emit("newProducer", {
                peerId: this.userMeta.id,
                peerName: this.userMeta.name,
                producerId: producer.id,
@@ -563,7 +563,7 @@ class Peer {
       // )
       this.dataProducers.forEach((dataProducer) => {
          if (!dataProducer.closed) {
-            io.to(socketId).emit("newDataProducer", {
+            socketServer.to(socketId).emit("newDataProducer", {
                peerId: this.userMeta.id,
                peerName: this.userMeta.name,
                dataProducerId: dataProducer.id,

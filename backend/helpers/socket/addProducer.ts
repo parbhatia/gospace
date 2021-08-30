@@ -1,8 +1,8 @@
-import { Producer, RtpParameters } from "mediasoup/lib/types"
-import { MediaKind } from "mediasoup/lib/RtpParameters"
-import { Socket } from "socket.io"
+import type { Producer, RtpParameters } from "mediasoup/lib/types"
+import type { MediaKind } from "mediasoup/lib/RtpParameters"
+import type { Socket } from "socket.io"
 import { UserMeta } from "../../types"
-import RoomFactory from "../../RoomFactory"
+import type RoomFactory from "../../RoomFactory"
 export default ({
    socket,
    roomFactory,

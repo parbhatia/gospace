@@ -7,6 +7,11 @@ import {
    SctpStreamParameters,
 } from "mediasoup/lib/types"
 
+export interface HTTPSCredentials {
+   key: string
+   cert: string
+}
+
 export interface UserMeta {
    id: string
    name: string

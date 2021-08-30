@@ -1,8 +1,8 @@
 import { RtpCapabilities } from "mediasoup/lib/types"
-import Room from "../../Room"
+import type Room from "../../Room"
 import { UserMeta } from "../../types"
-import { Socket } from "socket.io"
-import RoomFactory from "../../RoomFactory"
+import type { Socket } from "socket.io"
+import type RoomFactory from "../../RoomFactory"
 import debugm from "debug"
 const debug = debugm("app:requestRouterRTPCapabilities")
 

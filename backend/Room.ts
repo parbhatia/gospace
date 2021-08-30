@@ -1,8 +1,8 @@
-import { Router } from "mediasoup/lib/types"
-import { Socket } from "socket.io"
+import type { Router } from "mediasoup/lib/types"
+import type { Socket } from "socket.io"
 import sendRoomUpdate from "./helpers/sendRoomUpdate"
 import Peer from "./Peer"
-import { RoomInfo, UserMeta } from "./types"
+import type { RoomInfo, UserMeta } from "./types"
 import debugm from "debug"
 const debug = debugm("app:Room")
 interface RoomConstructParams {

@@ -1,5 +1,5 @@
 import { createWorker } from "mediasoup"
-import { Worker, WorkerResourceUsage } from "mediasoup/lib/types"
+import type { Worker, WorkerResourceUsage } from "mediasoup/lib/types"
 import config from "./config/mediasoup"
 import debugm from "debug"
 const debug = debugm("app:WorkerFactory")
@@ -18,7 +18,7 @@ class WorkerFactory {
       this.numWorkers = numWorkers
    }
    static init = async (): Promise<WorkerFactory> => {
-      const me = new WorkerFactory({})
+      const me = new WorkerFactory({ })
       await me.createAllWorkers()
       return me
    }

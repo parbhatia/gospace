@@ -1,6 +1,6 @@
 import Room from "./Room"
 import WorkerFactory from "./WorkerFactory"
-import { Router, Worker, RtpCodecCapability } from "mediasoup/lib/types"
+import type { Router, Worker, RtpCodecCapability } from "mediasoup/lib/types"
 import config from "./config/mediasoup"
 import debugm from "debug"
 const debug = debugm("app:RoomFactory")
@@ -67,7 +67,7 @@ class RoomFactory {
          debug("Could not create new room")
       }
    }
-   createDefaultRooms = async (WorkerFactory: WorkerFactory) => {}
+   createDefaultRooms = async (WorkerFactory: WorkerFactory) => { }
    debug = async ({ roomId }: { roomId: string }) => {
       debug("Worker stats:")
       if (this.roomExists(roomId)) {
