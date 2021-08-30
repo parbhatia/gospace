@@ -8,25 +8,6 @@ import MuteVideoButton from "../../assets/mutevideo.svg"
 import ResumeVideoButton from "../../assets/resumevideo.svg"
 import Button from "../components/Button"
 
-const ProduceControlButton = ({
-   children,
-   onClick,
-   selected,
-}: {
-   children
-   onClick
-   selected: boolean
-}) => (
-   <button
-      onClick={onClick}
-      type="button"
-      className={`fill-current m-1 btn btn-xs md:btn-sm lg:btn-md  ${selected ? "btn-active" : ""
-         }`}
-   >
-      {children}
-   </button>
-)
-
 const ProducerControls = ({
    updateProducerOfType,
    createVideoProducer,
@@ -44,7 +25,7 @@ const ProducerControls = ({
    const [muteVideo, setVideoAudio] = useState(false)
    return (
       <div className="flex">
-         <ProduceControlButton
+         <Button
             selected={muteAudio}
             onClick={async () => {
                if (!muteAudio) {
@@ -61,8 +42,8 @@ const ProducerControls = ({
             }}
          >
             {muteAudio ? <MuteAudioButton /> : <ResumeAudioButton />}
-         </ProduceControlButton>
-         <ProduceControlButton
+         </Button>
+         <Button
             selected={muteVideo}
             onClick={async () => {
                if (!muteVideo) {
@@ -79,7 +60,7 @@ const ProducerControls = ({
             }}
          >
             {muteVideo ? <MuteVideoButton /> : <ResumeVideoButton />}
-         </ProduceControlButton>
+         </Button>
          {/* {!audioProducerCreated && (
             <ProduceControlButton
                selected={muteVideo}

@@ -69,7 +69,7 @@ const Canvas = ({ canvasRef, onChange }) => {
    }
 
    return (
-      <div className="flex flex-col flex-wrap items-center h-full m-2 mt-16 bg-white rounded-lg">
+      <div className="flex flex-col flex-wrap items-center justify-center h-full m-2 bg-white rounded-lg">
          <CanvasDraw
             className="inline-block border-4 shadow-lg"
             ref={canvasRef}

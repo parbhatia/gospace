@@ -5,7 +5,7 @@ const Audio = ({
 }) => {
    return (
       <audio
-         className="w-full border-4 border-black shadow-lg"
+         className="w-full shadow-lg"
          autoPlay
          controls
          playsInline

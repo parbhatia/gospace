@@ -65,16 +65,17 @@ const ConsumerDistributor = ({
          if (numSquares !== 0) {
 
             const { rows, cols, width, height, area } = ReactScaler.largestSquare(targetWidth, targetHeight, numSquares)
+            console.log({ rows, cols, width, height, })
             // console.log({ rows, cols, width, height, area })
             setDisplayRenderInfo({ possibleRowCount: rows, possibleColCount: cols, possibleWidth: width, possibleHeight: height })
          }
       }
    }, [dimensions, containers])
 
-   //assuming we're using m-2 in tailwind = 8px
-   const ITEM_MARGIN_PER_SIZE = 4
-   // since we're using flex-row, we need to account for one side of margin for each item
-   const ACCUMULATED_MARGIN_WIDTHS = (ITEM_MARGIN_PER_SIZE * containers.length) + ITEM_MARGIN_PER_SIZE
+   // //assuming we're using m-2 in tailwind = 8px
+   // const ITEM_MARGIN_PER_SIZE = 4
+   // // since we're using flex-row, we need to account for one side of margin for each item
+   // const ACCUMULATED_MARGIN_WIDTHS = (ITEM_MARGIN_PER_SIZE * containers.length) + ITEM_MARGIN_PER_SIZE
 
    return (
       <div ref={consumerMediaRef} className="flex flex-wrap content-center justify-center w-full h-full ">
@@ -82,8 +83,8 @@ const ConsumerDistributor = ({
             containers.map((c, i) => (
                <div key={`${c.id}${i}`}
                   // style={{ flexBasis: '400px' }}
-                  style={{ width: displayRenderInfo ? displayRenderInfo.possibleWidth - ACCUMULATED_MARGIN_WIDTHS : 0 }}
-                  className="flex flex-col items-center justify-center w-full m-2">
+                  style={{ width: displayRenderInfo ? displayRenderInfo.possibleWidth : 0 }}
+                  className="flex flex-col items-center justify-center w-full p-4">
                   <MediaDistributor
                      container={c}
                      transportType={transportType}

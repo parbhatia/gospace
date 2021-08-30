@@ -187,18 +187,29 @@ export default function Home() {
    })
 
    return (
-      <div data-theme="light" className="w-screen h-screen p-2 body-font bg-base-100 text-neutral">
+      <div data-theme="cupcake" className="w-screen h-screen p-2 body-font bg-base-100 text-neutral ">
          <SocketContext.Provider value={socket}>
             <main className="flex flex-col w-full h-full">
                <div className="flex flex-col">
                   <div className="flex w-full text-center">
-                     <h1 className="p-1 text-2xl font-medium title-font">
-                        {roomInfo.name}
-                     </h1>
-                     <p className="p-1 mx-auto mb-2 text-base leading-relaxed lg:w-2/3">
-                        {roomInfo.totalPeers} peers
-                     </p>
-                     <StatusComponent connectionStatus={connectionStatus} />
+                     <div className="flex flex-wrap flex-grow">
+
+                        <h1 className="p-1 font-mono text-2xl font-medium title-font">
+                           {roomInfo.name}
+                        </h1>
+                     </div>
+                     <div className="flex items-center font-mono">
+
+                        <p className="p-1 text-lg leading-relaxed lg:w-2/3">
+                           {roomInfo.totalPeers} {roomInfo.totalPeers === 1 ? "peer" : "peers"}
+                        </p>
+                        <p className="p-1 font-mono text-lg countdown">
+                           <span className="--value:10;"></span>h
+                           <span className="--value:24;"></span>m
+                           <span className="--value:60;"></span>s
+                        </p>
+                        <StatusComponent connectionStatus={connectionStatus} />
+                     </div>
                   </div>
 
                   <div className="flex flex-wrap justify-center">
@@ -252,7 +263,7 @@ export default function Home() {
                   />
                   )} */}
 
-               <div className="absolute bottom-0 left-0 right-0 flex flex-col w-full">
+               <div className="absolute bottom-0 left-0 right-0 flex flex-col w-full p-4">
                   <ProducerDistributor producerContainer={producerContainer} />
 
 

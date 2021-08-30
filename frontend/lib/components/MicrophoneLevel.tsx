@@ -1,6 +1,6 @@
 const MicrophoneLevel = ({ audioRef }) => (
     <canvas
-        className="w-full h-3 border-2"
+        className="w-full h-3 bg-transparent "
         ref={audioRef}
     ></canvas>
 )
