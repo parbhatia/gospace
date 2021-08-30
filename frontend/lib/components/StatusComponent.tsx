@@ -1,24 +1,26 @@
+const defautlBadgeStyles = "p-4 text-lg rounded-full badge badge-lg badge-outline"
+
 const Connected = () => (
-   <span className="px-4 py-2 text-base text-green-600 bg-green-200 rounded-full ">
+   <span className={`${defautlBadgeStyles} text-green-600 bg-green-200`}>
       Connected{" "}
-      <span className="w-3 h-3">
-         <span className="absolute w-4 h-4 bg-green-400 rounded-full opacity-75 animate-ping"></span>
-         <span className="relative inline-flex w-3 h-3 bg-green-500 rounded-full "></span>
+      <span className="">
+         <span className="absolute w-5 h-5 bg-green-400 rounded-full opacity-75 animate-ping"></span>
+         <span className="relative inline-flex w-3 h-3 ml-1 bg-green-500 rounded-full "></span>
       </span>
    </span>
 )
 const Connecting = () => (
-   <span className="px-4 py-2 text-base text-yellow-600 bg-yellow-200 rounded-full ">
+   <span className={`${defautlBadgeStyles} text-yellow-600 bg-yellow-200 `} >
       Connecting
    </span>
 )
 const Disconnected = () => (
-   <span className="px-4 py-2 text-base text-red-600 bg-red-200 rounded-full ">
+   <span className={`${defautlBadgeStyles} text-red-600 bg-red-200 `}>
       Disconnected
    </span>
 )
 const Failure = () => (
-   <span className="px-4 py-2 text-base text-red-600 bg-red-200 rounded-full ">
+   <span className={`${defautlBadgeStyles} text-red-600 bg-red-200  `} >
       Failure
    </span>
 )
@@ -46,6 +48,6 @@ const StatusComponent = ({
    connectionStatus,
 }: {
    connectionStatus: string
-}) => <div >{ConnectionSwitch({ connectionStatus })}</div>
+}) => < >{ConnectionSwitch({ connectionStatus })}</>
 
 export default StatusComponent

@@ -12,6 +12,7 @@
         "@dicebear/avatars-initials-sprites": "^4.7.4",
         "@svgr/webpack": "^5.5.0",
         "catenary-curve": "^1.0.1",
+        "daisyui": "^1.14.0",
         "lazy-brush": "^1.0.1",
         "lz-string": "^1.4.4",
         "mediasoup-client": "^3.6.37",

@@ -7,7 +7,7 @@ const Video = ({
 }) => {
    return (
       <video
-         className={`${paused ? "animate-pulse" : ""} border-4 border-black shadow-lg `}
+         className={`${paused ? "animate-pulse" : ""} border-4 border-black shadow-lg w-full`}
          muted
          loop
          autoPlay

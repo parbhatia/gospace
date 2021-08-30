@@ -31,11 +31,11 @@ export interface ConsumerContainer {
    audio?: {
       mediaStream: MediaStream
       consumer: Consumer
-   }
+   } | null
    video?: {
       mediaStream: MediaStream
       consumer: Consumer
-   }
+   } | null
 }
 
 export interface ProducerContainer {
@@ -44,11 +44,11 @@ export interface ProducerContainer {
    audio?: {
       mediaStream: MediaStream
       producer: Producer
-   }
+   } | null
    video?: {
       mediaStream: MediaStream
       producer: Producer
-   }
+   } | null
 }
 export interface DataConsumerInput {
    dataConsumerType: DataProducerOrConsumerType

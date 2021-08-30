@@ -20,7 +20,7 @@ const ProduceControlButton = ({
    <button
       onClick={onClick}
       type="button"
-      className={`flex items-center w-full justify-center h-full p-2 text-base font-semibold text-center transition fill-current bg-white duration-200 border-2 border-gray-900 rounded-lg shadow-md ease-i hover:bg-red-500 hover:text-white${selected ? "border-0  bg-red-500text-white " : ""
+      className={`fill-current m-1 btn btn-xs md:btn-sm lg:btn-md  ${selected ? "btn-active" : ""
          }`}
    >
       {children}
@@ -80,14 +80,14 @@ const ProducerControls = ({
          >
             {muteVideo ? <MuteVideoButton /> : <ResumeVideoButton />}
          </ProduceControlButton>
-         {!audioProducerCreated && (
+         {/* {!audioProducerCreated && (
             <ProduceControlButton
                selected={muteVideo}
                onClick={createAudioProducer}
             >
                <span className="text-xs">Audio On</span>
             </ProduceControlButton>
-         )}
+         )} */}
       </div>
    )
 }

@@ -15,7 +15,7 @@ const containerMapper = (
          inactive: container?.audio?.mediaStream.inactive,
          paused: container?.audio?.mediaStream.paused,
       },
-      producer: {
+      [containerType]: {
          id: container?.audio?.[containerType].id,
          paused: container?.audio?.[containerType].paused,
          appData: container?.audio?.[containerType].appData,
@@ -27,7 +27,7 @@ const containerMapper = (
          inactive: container?.video?.mediaStream.inactive,
          paused: container?.video?.mediaStream.paused,
       },
-      producer: {
+      [containerType]: {
          id: container?.video?.[containerType].id,
          paused: container?.video?.[containerType].paused,
          appData: container?.video?.[containerType].appData,

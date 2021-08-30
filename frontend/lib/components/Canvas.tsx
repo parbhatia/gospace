@@ -1,5 +1,4 @@
 // import CanvasDraw from "react-canvas-draw"
-import { useEffect } from "react"
 import { useState } from "react"
 import { GithubPicker } from "react-color"
 import EraserIcon from "../../assets/eraser.svg"
@@ -10,8 +9,6 @@ import SaveIcon from "../../assets/save.svg"
 import downloadImage from "../helpers/downloadImage"
 import CanvasDraw from "./CanvasDraw"
 import ToolButton from "./CanvasToolButton"
-import useWindowSize from "../hooks/useWindowSize"
-import { Size } from "../types"
 
 const DEFAULT_CANVAS_BRUSH_COLOR = "#191919"
 const DEFAULT_CANVAS_GRID_COLOR = "#ffffff"
@@ -21,7 +18,6 @@ const MAX_BRUSH_SIZE = 60
 const MIN_BRUSH_SIZE = 1
 
 const Canvas = ({ canvasRef, onChange }) => {
-   const size: Size = useWindowSize()
    const [prevColor, setPrevColor] = useState(DEFAULT_CANVAS_BRUSH_COLOR)
    const [color, setColor] = useState(DEFAULT_CANVAS_BRUSH_COLOR)
    const [toolMode, setToolMode] = useState<"brush" | "eraser">("brush")
@@ -73,7 +69,7 @@ const Canvas = ({ canvasRef, onChange }) => {
    }
 
    return (
-      <div className="flex flex-col flex-wrap items-center m-2 bg-white rounded-lg">
+      <div className="flex flex-col flex-wrap items-center h-full m-2 mt-16 bg-white rounded-lg">
          <CanvasDraw
             className="inline-block border-4 shadow-lg"
             ref={canvasRef}

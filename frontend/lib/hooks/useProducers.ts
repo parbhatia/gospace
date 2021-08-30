@@ -28,6 +28,15 @@ const useProducers = ({
    initializeProducerTransport: any
    closeProducerTransport: any
 }) => {
+
+   const [producerContainer, setProducerContainer] =
+      useState<ProducerContainer>({
+         id: userMeta.id,
+         name: userMeta.name,
+         video: null,
+         audio: null
+      })
+
    const checkDeviceProduceCapability = (kind: "audio" | "video"): boolean => {
       if (!mediaSoupDevice || !mediaSoupDevice.canProduce(kind)) {
          console.log("Cannot produce using this device, invalid device")
@@ -55,8 +64,7 @@ const useProducers = ({
       }
    }
 
-   const [producerContainer, setProducerContainer] =
-      useState<ProducerContainer>({ })
+
    const createProducer = async ({
       mediaConstraints,
       transportDataType,
@@ -171,12 +179,12 @@ const useProducers = ({
          if (oldContainer.video?.producer.id === producerId) {
             return {
                ...oldContainer,
-               video: undefined,
+               video: null,
             }
          } else if (oldContainer.audio?.producer.id === producerId) {
             return {
                ...oldContainer,
-               audio: undefined,
+               audio: null,
             }
          } else {
             return oldContainer

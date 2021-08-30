@@ -193,14 +193,16 @@ const useConsumers = ({
          oldContainers
             .map((c) => {
                if (c.video?.consumer.id === consumerId) {
+                  console.log("setting video undefined")
                   return {
                      ...c,
-                     video: undefined,
+                     video: null,
                   }
                } else if (c.audio?.consumer.id === consumerId) {
+                  console.log("setting audio undefined")
                   return {
                      ...c,
-                     audio: undefined,
+                     audio: null,
                   }
                } else {
                   return c

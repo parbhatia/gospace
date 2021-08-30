@@ -107,6 +107,7 @@ export default function Home() {
    useEffect(() => {
       if (producerTransport) {
          createVideoProducer()
+         createAudioProducer()
       }
    }, [producerTransport])
 
@@ -186,12 +187,12 @@ export default function Home() {
    })
 
    return (
-      <div className="w-screen h-screen p-2 body-font">
+      <div data-theme="light" className="w-screen h-screen p-2 body-font bg-base-100 text-neutral">
          <SocketContext.Provider value={socket}>
             <main className="flex flex-col w-full h-full">
                <div className="flex flex-col">
                   <div className="flex w-full text-center">
-                     <h1 className="p-1 text-2xl font-medium text-gray-900 title-font">
+                     <h1 className="p-1 text-2xl font-medium title-font">
                         {roomInfo.name}
                      </h1>
                      <p className="p-1 mx-auto mb-2 text-base leading-relaxed lg:w-2/3">
@@ -200,33 +201,34 @@ export default function Home() {
                      <StatusComponent connectionStatus={connectionStatus} />
                   </div>
 
-                  <div>
-                     <div className="flex flex-wrap justify-center">
-                        <Button
-                           onClick={async () => {
-                              socketConnect()
-                           }}
-                        >
-                           <ReconnectIcon />
-                           <span className="ml-1"> Reconnect</span>
-                        </Button>
-                     </div>
-                  </div>
-                  <div className="m-1">
+                  <div className="flex flex-wrap justify-center">
                      <CanvasManager
                         handleOpenRoomCanvas={handleOpenRoomCanvas}
                         handleCloseRoomCanvas={handleCloseRoomCanvas}
                      >
                         <Canvas canvasRef={canvasRef} onChange={sendCanvasData} />
                      </CanvasManager>
+                     <Button
+                        onClick={async () => {
+                           socketConnect()
+                        }}
+                     >
+                        <ReconnectIcon />
+                        <span className="ml-1"> Reconnect</span>
+                     </Button>
+
                   </div>
                </div>
 
 
                <ConsumerDistributor
                   transportType="consumer"
-                  containers={Array.from(Array(4).keys()).map(i => producerContainer)}
+                  containers={consumerContainers}
                />
+               {/* <ConsumerDistributor
+                  transportType="consumer"
+                  containers={Array.from(Array(4).keys()).map(i => producerContainer)}
+               /> */}
 
                {/* <div className="flex flex-col items-center flex-auto w-1/2 m-4 md:w-1/2 lg:w-1/4">
                      <MediaDistributor
@@ -253,34 +255,41 @@ export default function Home() {
                <div className="absolute bottom-0 left-0 right-0 flex flex-col w-full">
                   <ProducerDistributor producerContainer={producerContainer} />
 
-                  <ProducerControls
-                     updateProducerOfType={updateProducerOfType}
-                     createVideoProducer={createVideoProducer}
-                     createAudioProducer={createAudioProducer}
-                     audioProducerCreated={
-                        producerContainer.audio !== null &&
-                        producerContainer.audio !== undefined
-                     }
-                     videoProducerCreated={
-                        producerContainer.video !== null &&
-                        producerContainer.video !== undefined
-                     }
-                  />
+
                   <div className="flex">
-                     <Button
-                        onClick={async () => {
-                           setDebugMode((prev) => !prev)
-                        }}
-                     >
-                        Debug
-                     </Button>
-                     <Button
-                        onClick={() => {
-                           socket.emit("debug", { roomId: roomInfo.id, userMeta })
-                        }}
-                     >
-                        Debug Backend
-                     </Button>
+                     <div className="flex flex-grow">
+
+                        <ProducerControls
+                           updateProducerOfType={updateProducerOfType}
+                           createVideoProducer={createVideoProducer}
+                           createAudioProducer={createAudioProducer}
+                           audioProducerCreated={
+                              producerContainer.audio !== null &&
+                              producerContainer.audio !== undefined
+                           }
+                           videoProducerCreated={
+                              producerContainer.video !== null &&
+                              producerContainer.video !== undefined
+                           }
+                        />
+                     </div>
+                     <div>
+
+                        <Button
+                           onClick={async () => {
+                              setDebugMode((prev) => !prev)
+                           }}
+                        >
+                           Debug
+                        </Button>
+                        <Button
+                           onClick={() => {
+                              socket.emit("debug", { roomId: roomInfo.id, userMeta })
+                           }}
+                        >
+                           Debug Backend
+                        </Button>
+                     </div>
                   </div>
                   {debugMode && (
                      <>
@@ -325,7 +334,7 @@ export default function Home() {
                               Disconnect Socket
                            </Button>
                         </div>
-                        <pre className="bg-white">{JSON_DEBUG_STATEMENT}</pre>
+                        <pre className="text-xs bg-white">{JSON_DEBUG_STATEMENT}</pre>
                      </>
                   )}
                </div>

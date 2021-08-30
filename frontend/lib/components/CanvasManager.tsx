@@ -34,15 +34,14 @@ const CanvasManager = ({
       <>
          {OpenCanvasButton}
          <div
-            className={`z-10 fixed inset-0 w-screen h-screen flex flex-col justify-center overflow-scroll bg-gray-900 bg-opacity-80 transition-opacity ${
-               displayCanvas ? "" : "hidden"
-            }`}
+            className={`z-10 fixed inset-0 w-screen h-screen flex flex-col justify-center bg-base-100 overflow-scroll bg-opacity-80 transition-opacity ${displayCanvas ? "" : "hidden"
+               }`}
             aria-labelledby="modal-title"
             role="dialog"
             aria-modal="true"
          >
             {displayCanvas && children}
-            <div className="mt-2 bg-white">{CloseCanvasButton}</div>
+            <div className="self-center m-auto">{CloseCanvasButton}</div>
          </div>
       </>
    )

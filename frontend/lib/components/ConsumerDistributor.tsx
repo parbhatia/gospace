@@ -62,16 +62,19 @@ const ConsumerDistributor = ({
          const targetHeight = node.getBoundingClientRect().height
          console.log({ targetHeight, targetWidth, })
          const numSquares = containers.length
-         const { rows, cols, width, height, area } = ReactScaler.largestSquare(targetWidth, targetHeight, numSquares)
-         // console.log({ rows, cols, width, height, area })
-         setDisplayRenderInfo({ possibleRowCount: rows, possibleColCount: cols, possibleWidth: width, possibleHeight: height })
+         if (numSquares !== 0) {
+
+            const { rows, cols, width, height, area } = ReactScaler.largestSquare(targetWidth, targetHeight, numSquares)
+            // console.log({ rows, cols, width, height, area })
+            setDisplayRenderInfo({ possibleRowCount: rows, possibleColCount: cols, possibleWidth: width, possibleHeight: height })
+         }
       }
    }, [dimensions, containers])
 
    //assuming we're using m-2 in tailwind = 8px
    const ITEM_MARGIN_PER_SIZE = 4
    // since we're using flex-row, we need to account for one side of margin for each item
-   const ACCUMULATED_MARGIN_WIDTHS = ITEM_MARGIN_PER_SIZE * containers.length
+   const ACCUMULATED_MARGIN_WIDTHS = (ITEM_MARGIN_PER_SIZE * containers.length) + ITEM_MARGIN_PER_SIZE
 
    return (
       <div ref={consumerMediaRef} className="flex flex-wrap content-center justify-center w-full h-full ">

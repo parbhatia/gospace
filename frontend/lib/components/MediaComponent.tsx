@@ -3,15 +3,9 @@ import { TransportDataType, TransportType } from "../types"
 import Audio from "./Audio"
 import Video from "./Video"
 import tailwindConfig from "../../tailwind.config"
+import MicrophoneLevel from "./MicrophoneLevel"
 
 const volumeBarColor = tailwindConfig.theme.extend.colors['volume-meter']
-
-const MicrophoneLevel = ({ audioRef }) => (
-   <canvas
-      className="w-full h-3 border-2"
-      ref={audioRef}
-   ></canvas>
-)
 
 const MediaComponent = ({
    name,
@@ -27,7 +21,6 @@ const MediaComponent = ({
    const isProducer = transportType === "producer"
    const mediaRef = useRef<any>()
    const volumeBarContextRef = useRef<any>()
-
    const [paused, setPaused] = useState(true)
 
    const monitorAudio = async (stream) => {
