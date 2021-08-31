@@ -60,12 +60,12 @@ const ConsumerDistributor = ({
          //get the dimensions of the section we want to display consumer media (audio/video)
          const targetWidth = node.getBoundingClientRect().width
          const targetHeight = node.getBoundingClientRect().height
-         console.log({ targetHeight, targetWidth, })
+         // console.log({ targetHeight, targetWidth, })
          const numSquares = containers.length
          if (numSquares !== 0) {
 
             const { rows, cols, width, height, area } = ReactScaler.largestSquare(targetWidth, targetHeight, numSquares)
-            console.log({ rows, cols, width, height, })
+            // console.log({ rows, cols, width, height, })
             // console.log({ rows, cols, width, height, area })
             setDisplayRenderInfo({ possibleRowCount: rows, possibleColCount: cols, possibleWidth: width, possibleHeight: height })
          }

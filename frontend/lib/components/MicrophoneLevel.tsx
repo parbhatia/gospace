@@ -5,5 +5,4 @@ const MicrophoneLevel = ({ audioRef }) => (
     ></canvas>
 )
 
-
 export default MicrophoneLevel
