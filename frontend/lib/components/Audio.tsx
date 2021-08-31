@@ -1,6 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import VolumeHighIcon from "../../assets/audio.svg"
-import VolumeMuted from "../../assets/muteaudio.svg"
 import MicrophoneLevel from "./MicrophoneLevel"
 import VolumeControls from "./VolumeControls"
 
@@ -10,7 +8,7 @@ import VolumeControls from "./VolumeControls"
 // Instead, we use audio context to monitor the audio level of a media stream, and normalize the results using the html audio element's volume level
 
 //time in ms we wait to update audio levels
-const AUDIO_MONITOR_FREQUENCY_MS = 400
+const AUDIO_MONITOR_FREQUENCY_MS = 500
 
 //sample size of visual data. this will be used by FFT. Increase this value for more accuracy at the cost of more computations
 const NUM_OF_SAMPLES = 64
@@ -51,7 +49,7 @@ const Audio = ({
    }
 
    const monitorVolumeCallBack = () => {
-      console.log("callback")
+      // console.log("callback")
       if (audioContext.analyser && audioContext.volumes) {
          const analyser = audioContext.analyser
          const volumes = audioContext.volumes
@@ -111,7 +109,7 @@ const Audio = ({
    }
 
    useEffect(() => {
-      //Skip using requestAnimationFrame, since these are still expensive computations, 
+      //Skip using requestAnimationFrame, since these are still expensive computations,
       const volumeCheckInterval = setInterval(
          monitorVolumeCallBack
          , AUDIO_MONITOR_FREQUENCY_MS)

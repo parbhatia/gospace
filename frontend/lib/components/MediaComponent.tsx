@@ -1,10 +1,7 @@
 import { useEffect, useRef, useState } from "react"
-import tailwindConfig from "../../tailwind.config"
 import { TransportDataType, TransportType } from "../types"
 import Audio from "./Audio"
 import Video from "./Video"
-
-const volumeBarColor = tailwindConfig.theme.extend.colors['volume-meter']
 
 const MediaComponent = ({
    name,

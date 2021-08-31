@@ -4,7 +4,6 @@ import Button from "../lib/components/Button"
 import Canvas from "../lib/components/Canvas"
 import CanvasManager from "../lib/components/CanvasManager"
 import ConsumerDistributor from "../lib/components/ConsumerDistributor"
-import MediaDistributor from "../lib/components/MediaDistributor"
 import ProducerControls from "../lib/components/ProducerControls"
 import ProducerDistributor from "../lib/components/ProducerDistributor"
 import StatusComponent from "../lib/components/StatusComponent"
@@ -25,7 +24,7 @@ import { SocketContext } from "../lib/socket"
 export default function Home() {
    const socket = useContext(SocketContext)
    const [id] = useState(() => getRandomId().toString())
-   const { roomInfo, handleRoomUpdate } = useMonitorRoom() //use this hook one level higher
+   const { roomInfo, handleRoomUpdate, timeElapsed } = useMonitorRoom() //use this hook one level higher
    const [userMeta, setUserMeta] = useState({
       id: id,
       name: id,
@@ -191,9 +190,8 @@ export default function Home() {
          <SocketContext.Provider value={socket}>
             <main className="flex flex-col w-full h-full">
                <div className="flex flex-col">
-                  <div className="flex w-full text-center">
-                     <div className="flex flex-wrap flex-grow">
-
+                  <div className="flex flex-wrap w-full text-center">
+                     <div className="flex flex-grow">
                         <h1 className="p-1 font-mono text-2xl font-medium title-font">
                            {roomInfo.name}
                         </h1>
@@ -203,14 +201,21 @@ export default function Home() {
                         <p className="p-1 text-lg leading-relaxed lg:w-2/3">
                            {roomInfo.totalPeers} {roomInfo.totalPeers === 1 ? "peer" : "peers"}
                         </p>
+                        {timeElapsed && timeElapsed.substring(0, 2) !== "00" &&
+                           <p className="p-1 font-mono text-lg countdown">
+                              <span style={{ '--value': timeElapsed?.substring(0, 2) }}></span>h
+                           </p>
+                        }
                         <p className="p-1 font-mono text-lg countdown">
-                           <span className="--value:10;"></span>h
-                           <span className="--value:24;"></span>m
-                           <span className="--value:60;"></span>s
+                           <span style={{ '--value': timeElapsed?.substring(3, 5) }}></span>m
+                        </p>
+                        <p className="p-1 font-mono text-lg countdown">
+                           <span style={{ '--value': timeElapsed?.substring(6, 8) }}></span>s
                         </p>
                         <StatusComponent connectionStatus={connectionStatus} />
                      </div>
                   </div>
+
 
                   <div className="flex flex-wrap justify-center">
                      <CanvasManager
@@ -240,18 +245,6 @@ export default function Home() {
                   transportType="consumer"
                   containers={Array.from(Array(4).keys()).map(i => producerContainer)}
                /> */}
-
-               {/* <div className="flex flex-col items-center flex-auto w-1/2 m-4 md:w-1/2 lg:w-1/4">
-                     <MediaDistributor
-                        container={producerContainer}
-                        transportType="producer"
-                     />
-                  </div> */}
-               {/*                   
-                  <ConsumerDistributor
-                     transportType="consumer"
-                     containers={consumerContainers}
-                  /> */}
 
 
                {/* {Array.from(Array(5).keys()).map(i => <ConsumerDistributor

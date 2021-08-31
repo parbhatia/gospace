@@ -17,11 +17,13 @@ class Room {
    private router: Router
    private peers: Map<string, Peer>
    private removeRoom
+   private dateCreated
    constructor({ id, router, removeRoom }: RoomConstructParams) {
       this.id = id
       this.router = router
       this.peers = new Map()
       this.removeRoom = removeRoom
+      this.dateCreated = new Date()
    }
    monitorRouter = () => {
       this.router.on("workerclose", async () => {
@@ -59,6 +61,7 @@ class Room {
    getPeer = (userMeta: UserMeta): Peer => this.peers.get(userMeta.id)!
    getPeers = (): Map<string, Peer> => this.peers
    hasPeer = (userMeta: UserMeta): boolean => this.peers.has(userMeta.id)
+   getDateCreated = () => this.dateCreated
 
    //Peer's producer has closed, so close all consumers of peers in room that are consuming this producer
    removeConsumers = ({
@@ -104,6 +107,7 @@ class Room {
    getRoomInfoForClient = async (): Promise<RoomInfo> => {
       return {
          totalPeers: this.peers.size,
+         dateCreated: this.getDateCreated(),
       }
    }
    broadcastRoomInfoToAll = async () => {

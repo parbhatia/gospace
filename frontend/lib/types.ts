@@ -63,6 +63,7 @@ export interface RoomInfo {
    totalPeers: number
    name: string
    id: string
+   dateCreated: string
 }
 export interface UserMeta {
    id: string

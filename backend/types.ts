@@ -29,6 +29,7 @@ export type PeerEntityUpdateType = "close" | "pause" | "resume" | "unpause"
 
 export interface RoomInfo {
    totalPeers: number
+   dateCreated: Date
 }
 
 export interface ConsumeServerConsumeParams {
