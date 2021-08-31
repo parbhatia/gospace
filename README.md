@@ -15,10 +15,14 @@ navigate to http://localhost:3000 for frontend
 because of self generated ssl certs, you might have to navigate to https://localhost:4000 and make sure it's not being blocked by the browser
 ```
 
-### to do:
-- [ ] dockerize frontend and backend
-- [ ] data producers and data consumers pause functionality?
+### to do: 
+##### (in order of importance, kinda)
+- [ ] add functionality to select devices
 - [ ] producer video/audio feed should be in the corner of the screen, and hideable
-- [ ] finishing implementing debug module instead of console logs
+- [ ] audio to text translation 
+- [ ] dockerize frontend and backend
+- [ ] auto room name generator, like "shivering mountain" or "volcanic ash" idk
+- [X] data producers and data consumers pause functionality?
 - [ ] css TV on/off animation
+- [ ] finishing implementing debug module instead of console logs
 - [X] add room elapsed time
