@@ -22,6 +22,7 @@ because of self generated ssl certs, you might have to navigate to https://local
 - [ ] producer video/audio feed should be in the corner of the screen, and hideable
 - [ ] audio to text translation 
 - [ ] dockerize frontend and backend
+- [ ] sandbox to https://gospace.me
 - [ ] auto room name generator, like "shivering mountain" or "volcanic ash" idk
 - [X] data producers and data consumers pause functionality?
 - [ ] css TV on/off animation
