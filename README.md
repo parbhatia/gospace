@@ -1,6 +1,6 @@
 # go space
 
-### this project is currently usable
+### this project is currently being polished
 ### to view a reasonable demo, run dev scripts on both backend and frontend folders:
 
 ```
@@ -18,6 +18,7 @@ because of self generated ssl certs, you might have to navigate to https://local
 ### to do: 
 ##### (in order of importance, kinda)
 - [ ] add functionality to select devices
+- [ ] put .d types in correct folder
 - [ ] producer video/audio feed should be in the corner of the screen, and hideable
 - [ ] audio to text translation 
 - [ ] dockerize frontend and backend
