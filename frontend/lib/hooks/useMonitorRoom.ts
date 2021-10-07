@@ -23,8 +23,8 @@ const useMonitorRoom = () => {
    useEffect(() => {
       const interval = setInterval(() => {
          if (roomInfo) {
-            const newTime = new Date()
-            const oldTime = new Date(roomInfo.dateCreated)
+            const newTime: any = new Date()
+            const oldTime: any = new Date(roomInfo.dateCreated)
             const timeDiff: number = Math.abs(newTime - oldTime)
             const parsedElapsedTime = parseMsToReadableTime(timeDiff)
             setTimeElapsed(parsedElapsedTime)

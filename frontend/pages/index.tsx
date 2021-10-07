@@ -30,7 +30,7 @@ export default function Home() {
       name: id,
    })
    const [debugMode, setDebugMode] = useState(false)
-   const [errors, setErrors] = useState({ })
+   const [errors, setErrors] = useState({})
    const {
       mediaSoupDevice,
       producerTransport,
@@ -203,14 +203,14 @@ export default function Home() {
                         </p>
                         {timeElapsed && timeElapsed.substring(0, 2) !== "00" &&
                            <p className="p-1 font-mono text-lg countdown">
-                              <span style={{ '--value': timeElapsed?.substring(0, 2) }}></span>h
+                              <span style={{ '--value': timeElapsed?.substring(0, 2) } as any}></span>h
                            </p>
                         }
                         <p className="p-1 font-mono text-lg countdown">
-                           <span style={{ '--value': timeElapsed?.substring(3, 5) }}></span>m
+                           <span style={{ '--value': timeElapsed?.substring(3, 5) } as any}></span>m
                         </p>
                         <p className="p-1 font-mono text-lg countdown">
-                           <span style={{ '--value': timeElapsed?.substring(6, 8) }}></span>s
+                           <span style={{ '--value': timeElapsed?.substring(6, 8) } as any}></span>s
                         </p>
                         <StatusComponent connectionStatus={connectionStatus} />
                      </div>
