@@ -32,9 +32,11 @@ Video, audio, and canvas sharing app using WebRTC, Socket.io, React.js, and Node
 
 ```
 cd backend
+npm install
 npm run dev
 
 cd frontend
+npm install
 npm run dev
 ```
 

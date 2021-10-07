@@ -4,6 +4,6 @@ node_modules
 .env*
 *.env
 env
-*.pem
+# *.pem
 .log
 logs
